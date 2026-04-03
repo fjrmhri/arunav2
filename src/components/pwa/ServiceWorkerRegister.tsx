@@ -7,16 +7,13 @@ export default function ServiceWorkerRegister() {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
 
-    const register = async () => {
+    void (async () => {
       try {
         await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       } catch (error) {
         console.error("Service worker registration failed:", error);
       }
-    };
-
-    window.addEventListener("load", register);
-    return () => window.removeEventListener("load", register);
+    })();
   }, []);
 
   return null;

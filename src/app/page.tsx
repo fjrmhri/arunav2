@@ -9,6 +9,7 @@ import SkincareCard from "@/components/dashboard/SkincareCard";
 import SupplementCard from "@/components/dashboard/SupplementCard";
 import MealCard from "@/components/dashboard/MealCard";
 import FastingCard from "@/components/dashboard/FastingCard";
+import AppActionsCard from "@/components/pwa/AppActionsCard";
 import { useTracker } from "@/hooks/useTracker";
 import { formatDate, getDayTypeIcon, getDayTypeLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,8 @@ export default function DashboardPage() {
     completedIds,
     allTaskIds,
     toggleOutdoor,
+    setNotificationsEnabled,
+    supplementSchedule,
   } = useTracker();
 
   const [activeTab, setActiveTab] = useState<
@@ -113,6 +116,16 @@ export default function DashboardPage() {
           <FastingCard />
         </div>
       )}
+
+      <div className="px-5 mb-4">
+        <AppActionsCard
+          dateKey={dateKey}
+          isFastingDay={isFastingDay}
+          notificationsEnabled={!!prefs?.notificationsEnabled}
+          supplements={supplementSchedule.supplements}
+          onNotificationSettingChange={setNotificationsEnabled}
+        />
+      </div>
 
       {/* Tab bar */}
       <div className="px-5 mb-4">

@@ -140,6 +140,17 @@ export function useTracker() {
     await saveUserPreferences({ isOutdoor: !prefs.isOutdoor });
   }, [prefs]);
 
+  const setNotificationsEnabled = useCallback(
+    async (enabled: boolean) => {
+      if (!prefs) return;
+      const newPrefs = { ...prefs, notificationsEnabled: enabled };
+      setPrefs(newPrefs);
+      const { saveUserPreferences } = await import("@/lib/firebase");
+      await saveUserPreferences({ notificationsEnabled: enabled });
+    },
+    [prefs]
+  );
+
   return {
     dateKey,
     dayIndex,
@@ -161,5 +172,6 @@ export function useTracker() {
     updateNotes,
     updateSkinReaction,
     toggleOutdoor,
+    setNotificationsEnabled,
   };
 }
