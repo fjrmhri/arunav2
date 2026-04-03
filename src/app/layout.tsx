@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, DM_Sans } from "next/font/google";
+import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
 
 const sora = Sora({
@@ -18,8 +19,22 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: "arunav2 — Program Kesehatan Berbasis Bukti",
+  applicationName: "arunav2",
   description:
     "Tracker program kebugaran, nutrisi, puasa 36 jam, dan skincare berbasis bukti untuk pria di iklim tropis",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "arunav2",
+  },
 };
 
 export const viewport: Viewport = {
@@ -36,6 +51,8 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${sora.variable} ${dmSans.variable}`}>
       <body className="bg-night-950 text-gray-100 font-body antialiased min-h-screen">
+        <ServiceWorkerRegister />
+
         {/* Mesh gradient background */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute inset-0 bg-night-950" />

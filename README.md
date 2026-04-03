@@ -18,6 +18,7 @@ Aplikasi tracker kesehatan berbasis Next.js untuk jadwal kebugaran, nutrisi, pua
 - Daily tracker dengan progress checklist
 - Safety notes dan asumsi penting dari data program
 - Penyimpanan data via Firebase atau localStorage
+- Bisa di-install di mobile sebagai PWA
 
 ## Struktur Singkat
 
@@ -86,6 +87,12 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ## Deploy
 
 Proyek bisa dideploy ke Vercel atau platform lain yang mendukung Next.js.
+
+## Install di Mobile
+
+- Android Chrome: buka website yang sudah di-deploy via HTTPS, lalu pilih `Install app` atau `Add to Home screen`.
+- iPhone Safari: buka website, tekan `Share`, lalu pilih `Add to Home Screen`.
+- Saat development, service worker hanya aktif pada build production, jadi uji PWA dengan `npm run build` lalu `npm run start` atau setelah deploy.
 
 ## Catatan
 
