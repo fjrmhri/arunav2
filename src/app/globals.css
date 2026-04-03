@@ -1,0 +1,198 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sora: "Sora", sans-serif;
+  --font-dm-sans: "DM Sans", sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: #060913;
+    color: #f3f4f6;
+    font-family: var(--font-dm-sans), sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sora), sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+  }
+}
+
+@layer components {
+  /* Card base */
+  .card {
+    @apply rounded-2xl border border-night-700/60 bg-night-900/80 backdrop-blur-sm;
+  }
+
+  .card-jade {
+    @apply rounded-2xl border border-jade-800/60 bg-jade-950/60 backdrop-blur-sm;
+  }
+
+  /* Section heading */
+  .section-heading {
+    @apply font-display text-xs font-semibold uppercase tracking-widest text-gray-500;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply h-1.5 rounded-full bg-night-700 overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+
+  /* Checkbox */
+  .checkbox-custom {
+    @apply w-6 h-6 rounded-lg border-2 border-night-600 flex-shrink-0 flex items-center justify-center transition-all duration-200 cursor-pointer;
+  }
+
+  .checkbox-custom.checked {
+    @apply bg-jade-600 border-jade-600;
+  }
+
+  /* Bottom nav */
+  .bottom-nav-item {
+    @apply flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all duration-200 cursor-pointer;
+  }
+
+  .bottom-nav-item.active {
+    @apply bg-jade-900/60 text-jade-400;
+  }
+
+  .bottom-nav-item:not(.active) {
+    @apply text-gray-600 hover:text-gray-400;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold font-display;
+  }
+
+  /* Tag */
+  .tag-unknown {
+    @apply badge bg-purple-900/60 text-purple-300 border border-purple-700/40;
+  }
+  .tag-assumption {
+    @apply badge bg-blue-900/60 text-blue-300 border border-blue-700/40;
+  }
+  .tag-warning {
+    @apply badge bg-yellow-900/60 text-yellow-300 border border-yellow-700/40;
+  }
+  .tag-danger {
+    @apply badge bg-red-900/60 text-red-300 border border-red-700/40;
+  }
+  .tag-conflict {
+    @apply badge bg-orange-900/60 text-orange-300 border border-orange-700/40;
+  }
+
+  /* Fasting ring animation */
+  @keyframes fastingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .fasting-active {
+    animation: fastingPulse 2.5s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient-jade {
+    @apply bg-gradient-to-r from-jade-400 to-emerald-400 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-warm {
+    @apply bg-gradient-to-r from-earth-400 to-yellow-400 bg-clip-text text-transparent;
+  }
+
+  .glow-jade {
+    box-shadow: 0 0 20px rgba(26, 163, 116, 0.15);
+  }
+
+  .glow-fasting {
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+  }
+
+  /* Safe area bottom for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+
+/* Animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Stagger animation delays */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+
+/* Touch targets for mobile */
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Dark mode only — this app is always dark */
+.recovery-gradient {
+  background: linear-gradient(135deg, rgba(123, 135, 148, 0.15) 0%, rgba(99, 102, 241, 0.08) 100%);
+}
+
+.fasting-gradient {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%);
+}
