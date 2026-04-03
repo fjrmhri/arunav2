@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Bell,
-  BellOff,
-  CheckCircle2,
-  Download,
-  Info,
-  Smartphone,
-} from "lucide-react";
+import { Bell, BellOff, ChevronDown, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   formatReminderTime,
@@ -68,7 +61,7 @@ export default function AppActionsCard({
   const [standaloneMode, setStandaloneMode] = useState(false);
   const [serviceWorkerAktif, setServiceWorkerAktif] = useState(false);
   const [promptInstallTersedia, setPromptInstallTersedia] = useState(false);
-  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [isReminderExpanded, setIsReminderExpanded] = useState(true);
   const [notificationState, setNotificationState] =
     useState<NotificationState>("unsupported");
   const [nextReminderLabel, setNextReminderLabel] = useState<string | null>(
@@ -124,7 +117,6 @@ export default function AppActionsCard({
       setStandaloneMode(true);
       setDeferredPrompt(null);
       setPromptInstallTersedia(false);
-      setShowInstallHelp(false);
       console.log("[PWA] appinstalled event fired");
     };
 
@@ -215,22 +207,6 @@ export default function AppActionsCard({
     };
   }, [notificationsEnabled, notificationState, reminderSlots]);
 
-  const handleInstallClick = async () => {
-    if (isInstalled) return;
-
-    if (!deferredPrompt) {
-      setShowInstallHelp((current) => !current);
-      return;
-    }
-
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    if (choice.outcome === "accepted") {
-      setDeferredPrompt(null);
-      setShowInstallHelp(false);
-    }
-  };
-
   const handleNotificationClick = async () => {
     if (notificationState === "unsupported") return;
 
@@ -250,135 +226,69 @@ export default function AppActionsCard({
     await onNotificationSettingChange(false);
   };
 
-  const installButtonLabel = isInstalled
-    ? "Aplikasi Terpasang"
-    : promptInstallTersedia
-      ? "Install App"
-      : "Tambahkan ke Home Screen";
-
-  const installButtonDescription = isInstalled
-    ? "PWA sudah aktif. Buka dari home screen untuk pengalaman seperti aplikasi."
-    : promptInstallTersedia
-      ? "Gunakan prompt install browser jika tersedia."
-      : "Prompt install tidak tersedia; gunakan menu browser (Add to Home screen) untuk install manual.";
-
   return (
     <div className="card p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Smartphone size={15} className="text-jade-400" />
-        <span className="text-xs font-display font-semibold uppercase tracking-wide text-gray-500">
-          App & Reminder
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <button
-          onClick={handleInstallClick}
+      <button
+        onClick={() => setIsReminderExpanded(!isReminderExpanded)}
+        className="w-full flex items-center justify-between mb-3 hover:opacity-75 transition-opacity"
+      >
+        <div className="flex items-center gap-2">
+          <Clock size={15} className="text-jade-400" />
+          <span className="text-xs font-display font-semibold uppercase tracking-wide text-gray-500">
+            Reminder
+          </span>
+        </div>
+        <ChevronDown
+          size={16}
           className={cn(
-            "rounded-2xl border px-4 py-3 text-left transition-all",
-            isInstalled
-              ? "bg-jade-950/40 border-jade-800/50"
-              : "bg-night-800/50 border-night-700/50 hover:border-jade-700/50",
+            "text-gray-500 transition-transform",
+            isReminderExpanded && "rotate-180",
           )}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            {isInstalled ? (
-              <CheckCircle2 size={16} className="text-jade-400" />
-            ) : (
-              <Download size={16} className="text-jade-400" />
+        />
+      </button>
+
+      {isReminderExpanded && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-1">
+          <button
+            onClick={handleNotificationClick}
+            disabled={notificationState === "unsupported"}
+            className={cn(
+              "rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-60",
+              notificationsEnabled
+                ? "bg-indigo-950/40 border-indigo-800/50"
+                : "bg-night-800/50 border-night-700/50 hover:border-indigo-700/50",
             )}
-            <span className="text-sm font-display font-semibold text-gray-200">
-              {installButtonLabel}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            {installButtonDescription}
-          </p>
-        </button>
-
-        <button
-          onClick={handleNotificationClick}
-          disabled={notificationState === "unsupported"}
-          className={cn(
-            "rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-60",
-            notificationsEnabled
-              ? "bg-indigo-950/40 border-indigo-800/50"
-              : "bg-night-800/50 border-night-700/50 hover:border-indigo-700/50",
-          )}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            {notificationsEnabled ? (
-              <Bell size={16} className="text-indigo-300" />
-            ) : (
-              <BellOff size={16} className="text-indigo-300" />
-            )}
-            <span className="text-sm font-display font-semibold text-gray-200">
-              {notificationsEnabled ? "Reminder Aktif" : "Aktifkan Reminder"}
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            {notificationState === "unsupported"
-              ? "Browser ini tidak mendukung Notification API."
-              : notificationsEnabled
-                ? nextReminderLabel
-                  ? `Reminder berikutnya: ${nextReminderLabel}`
-                  : "Tidak ada reminder tersisa untuk hari ini."
-                : "Notifikasi akan muncul 5 menit sebelum jadwal suplemen."}
-          </p>
-        </button>
-      </div>
-
-      <div className="mt-3 rounded-2xl border border-night-700/50 bg-night-900/60 p-3 text-xs text-gray-400">
-        <p className="font-semibold text-gray-200 text-[11px]">
-          Status PWA (diagnostik):
-        </p>
-        <ul className="mt-1 list-disc list-inside space-y-1">
-          <li>SW aktif: {serviceWorkerAktif ? "Ya" : "Tidak"}</li>
-          <li>
-            Prompt install tersedia: {promptInstallTersedia ? "Ya" : "Tidak"}
-          </li>
-          <li>Mode standalone: {standaloneMode ? "Ya" : "Tidak"}</li>
-        </ul>
-      </div>
-
-      {showInstallHelp && !isInstalled && (
-        <div className="mt-3 rounded-2xl border border-night-700/50 bg-night-900/70 p-3">
-          <div className="flex items-start gap-2">
-            <Info size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-gray-400 leading-relaxed space-y-1">
-              <p>
-                Di Android Chrome, tombol install tidak selalu muncul di menu.
-                Prompt install biasanya baru aktif setelah service worker
-                terbaca dan browser menganggap situs layak di-install.
-              </p>
-              <p>
-                Coba refresh sekali, lalu buka lagi halaman ini. Jika event
-                install sudah tersedia, tombol di atas akan berubah menjadi{" "}
-                <strong className="text-gray-200">Install App</strong>.
-              </p>
-              <p>
-                Jika tetap belum tersedia, situs masih bisa ditambahkan manual
-                ke home screen dari menu browser bila Chrome mengizinkannya.
-              </p>
+          >
+            <div className="flex items-center gap-2 mb-1">
+              {notificationsEnabled ? (
+                <Bell size={16} className="text-indigo-300" />
+              ) : (
+                <BellOff size={16} className="text-indigo-300" />
+              )}
+              <span className="text-sm font-display font-semibold text-gray-200">
+                {notificationsEnabled ? "Reminder Aktif" : "Aktifkan Reminder"}
+              </span>
             </div>
-          </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              {notificationState === "unsupported"
+                ? "Browser ini tidak mendukung Notification API."
+                : notificationsEnabled
+                  ? nextReminderLabel
+                    ? `Reminder berikutnya: ${nextReminderLabel}`
+                    : "Tidak ada reminder tersisa untuk hari ini."
+                  : "Notifikasi akan muncul 5 menit sebelum jadwal suplemen."}
+            </p>
+          </button>
         </div>
       )}
 
-      {notificationState === "denied" && (
+      {notificationState === "denied" && isReminderExpanded && (
         <div className="mt-3 rounded-2xl border border-red-800/40 bg-red-950/30 p-3 text-xs text-red-300 leading-relaxed">
           Izin notifikasi sedang diblokir. Buka pengaturan site di browser, ubah
           permission notifikasi ke <strong>Allow</strong>, lalu aktifkan
           reminder lagi.
         </div>
       )}
-
-      <p className="mt-3 text-[11px] text-gray-600 leading-relaxed">
-        Reminder bekerja paling baik saat situs sudah dibuka minimal sekali dan
-        idealnya dipasang sebagai app. Untuk notifikasi yang tetap pasti muncul
-        saat app benar-benar tertutup lama, nanti perlu push notification
-        berbasis server.
-      </p>
     </div>
   );
 }
