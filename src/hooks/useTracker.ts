@@ -10,7 +10,12 @@ import {
 import { todayKey, calendarDayToCycleDay, generateTasks } from "@/lib/utils";
 import { EXERCISE_SCHEDULE } from "@/data/fitness-seed";
 import { SKINCARE_SCHEDULE } from "@/data/skincare-seed";
-import { MEAL_PLANS, SUPPLEMENT_SCHEDULES } from "@/data/fitness-seed";
+import {
+  getExercisePlanForDate,
+  getFastingContext,
+  getMealPlanForDate,
+  getSupplementScheduleForDate,
+} from "@/lib/fasting";
 import type { DayIndex, CompletionLog, UserPreferences } from "@/types";
 
 export function useTracker() {
@@ -26,21 +31,19 @@ export function useTracker() {
     : 1;
 
   // Get today's data
-  const exercise = EXERCISE_SCHEDULE.find((e) => e.dayIndex === dayIndex)!;
+  const baseExercise = EXERCISE_SCHEDULE.find((e) => e.dayIndex === dayIndex)!;
   const skincare = SKINCARE_SCHEDULE.find((s) => s.dayIndex === dayIndex)!;
-  const mealPlan = MEAL_PLANS.find((m) => m.dayIndex === dayIndex) || MEAL_PLANS[0];
-  const supplementSchedule =
-    SUPPLEMENT_SCHEDULES.find((s) => s.dayIndex === dayIndex) ||
-    SUPPLEMENT_SCHEDULES[0];
+  const fastingContext = prefs ? getFastingContext(dateKey, prefs) : null;
+  const exercise = getExercisePlanForDate(dayIndex, dateKey, prefs);
+  const mealPlan = getMealPlanForDate(dayIndex, dateKey, prefs);
+  const supplementSchedule = getSupplementScheduleForDate(dayIndex, dateKey, prefs);
 
   // Generate all task IDs for today
-  const allTasks = generateTasks(dayIndex, dateKey);
+  const allTasks = generateTasks(dayIndex, dateKey, prefs);
   const allTaskIds = allTasks.map((t) => t.id);
 
-  // Check if fasting day (Selasa = dayIndex 2)
-  const isFastingDay = dayIndex === 2;
-  // Check if fasting prep day (Minggu = dayIndex 7)
-  const isFastingPrepDay = dayIndex === 7;
+  const isFastingDay = !!fastingContext?.isFastingDay;
+  const isFastingPrepDay = !!fastingContext?.isFastStartDay;
 
   // Computed progress
   const completedIds = log?.completedTaskIds ?? [];
@@ -158,10 +161,12 @@ export function useTracker() {
     log,
     streak,
     loading,
+    baseExercise,
     exercise,
     skincare,
     mealPlan,
     supplementSchedule,
+    fastingContext,
     allTasks,
     allTaskIds,
     completedIds,

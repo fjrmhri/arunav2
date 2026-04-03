@@ -1,10 +1,13 @@
 import type { Supplement } from "@/types";
+import type { FastingContext } from "@/lib/fasting";
+import { FASTING_REFEED_SUPPLEMENT_TIME } from "@/lib/fasting";
+import { combineDateKeyAndTime, getLocalDateKey } from "@/lib/date";
 
-const FASTING_REFEED_TIME = "08:00";
 const REMINDER_OFFSET_MS = 5 * 60 * 1000;
 
 export type SupplementReminderSlot = {
   id: string;
+  scheduledDateKey: string;
   scheduledTime: string;
   scheduledAt: Date;
   remindAt: Date;
@@ -13,67 +16,119 @@ export type SupplementReminderSlot = {
   items: string[];
 };
 
-function isShiftedToRefeed(supplement: Supplement, isFastingDay: boolean) {
+function isShiftedToRefeed(supplement: Supplement) {
   return (
-    isFastingDay &&
     !supplement.name.includes("Creatine") &&
     !supplement.name.includes("Magnesium")
   );
 }
 
-function getScheduledTime(supplement: Supplement, isFastingDay: boolean) {
-  if (isShiftedToRefeed(supplement, isFastingDay)) {
-    return FASTING_REFEED_TIME;
+function resolveScheduledDateTime(
+  dateKey: string,
+  supplement: Supplement,
+  fastingContext?: FastingContext | null,
+) {
+  const scheduledTime = supplement.timeRange.split("–")[0];
+
+  if (!fastingContext || !isShiftedToRefeed(supplement)) {
+    return {
+      scheduledDateKey: dateKey,
+      scheduledTime,
+      scheduledAt: combineDateKeyAndTime(dateKey, scheduledTime),
+    };
   }
 
-  return supplement.timeRange.split("–")[0];
-}
+  if (fastingContext.isStrictFastDay) {
+    return {
+      scheduledDateKey: fastingContext.currentFast.endDateKey,
+      scheduledTime: FASTING_REFEED_SUPPLEMENT_TIME,
+      scheduledAt: combineDateKeyAndTime(
+        fastingContext.currentFast.endDateKey,
+        FASTING_REFEED_SUPPLEMENT_TIME,
+      ),
+    };
+  }
 
-function toLocalDateTime(dateKey: string, time: string) {
-  const [hour, minute] = time.split(":").map(Number);
-  const date = new Date(`${dateKey}T00:00:00`);
-  date.setHours(hour, minute, 0, 0);
-  return date;
+  if (fastingContext.isRefeedDay) {
+    return {
+      scheduledDateKey: dateKey,
+      scheduledTime: FASTING_REFEED_SUPPLEMENT_TIME,
+      scheduledAt: combineDateKeyAndTime(
+        dateKey,
+        FASTING_REFEED_SUPPLEMENT_TIME,
+      ),
+    };
+  }
+
+  const originalScheduledAt = combineDateKeyAndTime(dateKey, scheduledTime);
+  const fallsInsideFastWindow =
+    originalScheduledAt >= fastingContext.currentFast.startAt &&
+    originalScheduledAt < fastingContext.currentFast.endAt;
+
+  if (fallsInsideFastWindow) {
+    return {
+      scheduledDateKey: fastingContext.currentFast.endDateKey,
+      scheduledTime: FASTING_REFEED_SUPPLEMENT_TIME,
+      scheduledAt: combineDateKeyAndTime(
+        fastingContext.currentFast.endDateKey,
+        FASTING_REFEED_SUPPLEMENT_TIME,
+      ),
+    };
+  }
+
+  return {
+    scheduledDateKey: dateKey,
+    scheduledTime,
+    scheduledAt: originalScheduledAt,
+  };
 }
 
 export function getSupplementReminderSlots(
   dateKey: string,
   supplements: Supplement[],
-  isFastingDay: boolean
+  fastingContext?: FastingContext | null,
 ): SupplementReminderSlot[] {
   const grouped = new Map<
     string,
-    { scheduledAt: Date; items: string[] }
+    { scheduledDateKey: string; scheduledAt: Date; items: string[] }
   >();
 
   for (const supplement of supplements) {
-    const scheduledTime = getScheduledTime(supplement, isFastingDay);
-    const scheduledAt = toLocalDateTime(dateKey, scheduledTime);
+    const { scheduledDateKey, scheduledTime, scheduledAt } =
+      resolveScheduledDateTime(dateKey, supplement, fastingContext);
     const label = `${supplement.name} (${supplement.dose})`;
+    const groupKey = `${scheduledDateKey}_${scheduledTime}`;
 
-    if (!grouped.has(scheduledTime)) {
-      grouped.set(scheduledTime, {
+    if (!grouped.has(groupKey)) {
+      grouped.set(groupKey, {
+        scheduledDateKey,
         scheduledAt,
         items: [label],
       });
       continue;
     }
 
-    grouped.get(scheduledTime)!.items.push(label);
+    grouped.get(groupKey)!.items.push(label);
   }
 
   return Array.from(grouped.entries())
-    .map(([scheduledTime, value]) => {
+    .map(([groupKey, value]) => {
+      const [scheduledDateKey, scheduledTime] = groupKey.split("_");
       const remindAt = new Date(value.scheduledAt.getTime() - REMINDER_OFFSET_MS);
       const itemList = value.items.join(", ");
+      const isDifferentDay = scheduledDateKey !== dateKey;
+      const scheduledLabel = isDifferentDay
+        ? `${scheduledDateKey} • ${scheduledTime}`
+        : scheduledTime;
 
       return {
-        id: `${dateKey}_${scheduledTime.replace(":", "")}`,
+        id: `${scheduledDateKey}_${scheduledTime.replace(":", "")}`,
+        scheduledDateKey,
         scheduledTime,
         scheduledAt: value.scheduledAt,
         remindAt,
         items: value.items,
-        title: `Pengingat Suplemen • ${scheduledTime}`,
+        title: `Pengingat Suplemen • ${scheduledLabel}`,
         body: `5 menit lagi: ${itemList}`,
       };
     })
@@ -85,4 +140,22 @@ export function formatReminderTime(date: Date) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+export function formatReminderDateTime(date: Date) {
+  const dateKey = getLocalDateKey(date);
+  const today = getLocalDateKey();
+  const timeLabel = formatReminderTime(date);
+
+  if (dateKey === today) {
+    return timeLabel;
+  }
+
+  const dateLabel = new Intl.DateTimeFormat("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(date);
+
+  return `${dateLabel} • ${timeLabel}`;
 }

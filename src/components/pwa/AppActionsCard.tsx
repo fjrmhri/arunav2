@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Bell, BellOff, ChevronDown, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  formatReminderTime,
+  formatReminderDateTime,
   getSupplementReminderSlots,
 } from "@/lib/supplementReminders";
 import type { Supplement } from "@/types";
+import type { FastingContext } from "@/lib/fasting";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -16,13 +17,37 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface AppActionsCardProps {
   dateKey: string;
-  isFastingDay: boolean;
+  fastingContext?: FastingContext | null;
   notificationsEnabled: boolean;
   supplements: Supplement[];
   onNotificationSettingChange: (enabled: boolean) => Promise<void> | void;
 }
 
 type NotificationState = NotificationPermission | "unsupported";
+type ReminderLedger = Record<string, number>;
+
+const REMINDER_LEDGER_KEY = "supplement_reminder_ledger_v2";
+const REMINDER_GRACE_MS = 45 * 60 * 1000;
+
+function readReminderLedger(): ReminderLedger {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = localStorage.getItem(REMINDER_LEDGER_KEY);
+    return raw ? (JSON.parse(raw) as ReminderLedger) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeReminderLedger(ledger: ReminderLedger) {
+  if (typeof window === "undefined") return;
+
+  const pruned = Object.fromEntries(
+    Object.entries(ledger).filter(([, timestamp]) => Date.now() - timestamp < 3 * 24 * 60 * 60 * 1000),
+  );
+  localStorage.setItem(REMINDER_LEDGER_KEY, JSON.stringify(pruned));
+}
 
 async function showReminderNotification(
   title: string,
@@ -50,17 +75,17 @@ async function showReminderNotification(
 
 export default function AppActionsCard({
   dateKey,
-  isFastingDay,
+  fastingContext,
   notificationsEnabled,
   supplements,
   onNotificationSettingChange,
 }: AppActionsCardProps) {
-  const [deferredPrompt, setDeferredPrompt] =
+  const [, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [standaloneMode, setStandaloneMode] = useState(false);
-  const [serviceWorkerAktif, setServiceWorkerAktif] = useState(false);
-  const [promptInstallTersedia, setPromptInstallTersedia] = useState(false);
+  const [, setIsInstalled] = useState(false);
+  const [, setStandaloneMode] = useState(false);
+  const [, setServiceWorkerAktif] = useState(false);
+  const [, setPromptInstallTersedia] = useState(false);
   const [isReminderExpanded, setIsReminderExpanded] = useState(true);
   const [notificationState, setNotificationState] =
     useState<NotificationState>("unsupported");
@@ -69,8 +94,8 @@ export default function AppActionsCard({
   );
 
   const reminderSlots = useMemo(
-    () => getSupplementReminderSlots(dateKey, supplements, isFastingDay),
-    [dateKey, supplements, isFastingDay],
+    () => getSupplementReminderSlots(dateKey, supplements, fastingContext),
+    [dateKey, supplements, fastingContext],
   );
 
   useEffect(() => {
@@ -153,7 +178,7 @@ export default function AppActionsCard({
 
     setNextReminderLabel(
       nextReminder
-        ? `${formatReminderTime(nextReminder.remindAt)} • ${nextReminder.items.join(", ")}`
+        ? `${formatReminderDateTime(nextReminder.remindAt)} • ${nextReminder.items.join(", ")}`
         : null,
     );
   }, [reminderSlots]);
@@ -164,26 +189,36 @@ export default function AppActionsCard({
 
     const fireDueReminders = async () => {
       const now = Date.now();
+      const reminderLedger = readReminderLedger();
       const nextReminder = reminderSlots.find(
         (slot) => slot.scheduledAt.getTime() > now,
       );
 
       setNextReminderLabel(
         nextReminder
-          ? `${formatReminderTime(nextReminder.remindAt)} • ${nextReminder.items.join(", ")}`
+          ? `${formatReminderDateTime(nextReminder.remindAt)} • ${nextReminder.items.join(", ")}`
           : null,
       );
 
       for (const slot of reminderSlots) {
-        const storageKey = `supplement_reminder_${slot.id}`;
-        if (localStorage.getItem(storageKey)) continue;
+        if (reminderLedger[slot.id]) continue;
 
         const remindAt = slot.remindAt.getTime();
         const scheduledAt = slot.scheduledAt.getTime();
+        const shouldFireOnTime = now >= remindAt && now < scheduledAt;
+        const shouldFireCatchUp =
+          now >= scheduledAt && now - scheduledAt <= REMINDER_GRACE_MS;
 
-        if (now >= remindAt && now < scheduledAt) {
-          await showReminderNotification(slot.title, slot.body, slot.id);
-          localStorage.setItem(storageKey, String(now));
+        if (shouldFireOnTime || shouldFireCatchUp) {
+          await showReminderNotification(
+            slot.title,
+            shouldFireCatchUp
+              ? `Baru terlewat: ${slot.items.join(", ")}`
+              : slot.body,
+            slot.id,
+          );
+          reminderLedger[slot.id] = now;
+          writeReminderLedger(reminderLedger);
         }
       }
     };
@@ -198,12 +233,17 @@ export default function AppActionsCard({
         void fireDueReminders();
       }
     };
+    const handleFocus = () => {
+      void fireDueReminders();
+    };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [notificationsEnabled, notificationState, reminderSlots]);
 
@@ -276,7 +316,7 @@ export default function AppActionsCard({
                   ? nextReminderLabel
                     ? `Reminder berikutnya: ${nextReminderLabel}`
                     : "Tidak ada reminder tersisa untuk hari ini."
-                  : "Notifikasi akan muncul 5 menit sebelum jadwal suplemen."}
+                  : "Notifikasi best-effort akan muncul 5 menit sebelum jadwal, lalu mencoba catch-up sekali saat app dibuka kembali dalam grace window."}
             </p>
           </button>
         </div>

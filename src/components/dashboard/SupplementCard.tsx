@@ -1,11 +1,13 @@
 "use client";
 
 import { Pill, AlertTriangle, Clock, Info } from "lucide-react";
-import { SUPPLEMENTS_BASE } from "@/data/fitness-seed";
 import { cn } from "@/lib/utils";
+import type { FastingContext } from "@/lib/fasting";
+import type { SupplementSchedule } from "@/types";
 
 interface SupplementCardProps {
-  isFastingDay?: boolean;
+  schedule: SupplementSchedule;
+  fastingContext?: FastingContext | null;
 }
 
 const SLOT_META = {
@@ -17,14 +19,17 @@ const SLOT_META = {
 
 const SLOT_ORDER = ["pagi", "siang", "sore", "malam"] as const;
 
-export default function SupplementCard({ isFastingDay }: SupplementCardProps) {
+export default function SupplementCard({
+  schedule,
+  fastingContext,
+}: SupplementCardProps) {
   // Group supplements by timingSlot
-  const grouped = SUPPLEMENTS_BASE.reduce((acc, supp) => {
+  const grouped = schedule.supplements.reduce((acc, supp) => {
     const slot = supp.timingSlot;
     if (!acc[slot]) acc[slot] = [];
     acc[slot].push(supp);
     return acc;
-  }, {} as Record<string, typeof SUPPLEMENTS_BASE>);
+  }, {} as Record<string, typeof schedule.supplements>);
 
   return (
     <div className="card p-4">
@@ -39,10 +44,18 @@ export default function SupplementCard({ isFastingDay }: SupplementCardProps) {
       </div>
 
       {/* Fasting day note */}
-      {isFastingDay && (
+      {fastingContext?.isStrictFastDay && (
         <div className="mb-4 rounded-xl bg-indigo-950/50 border border-indigo-800/50 p-3">
           <p className="text-xs text-indigo-400">
-            ⏳ <strong>Hari Puasa:</strong> Semua suplemen kecuali Creatine dikonsumsi saat berbuka (08:00+) bersama refeeding. Creatine tetap dikonsumsi sore hari — aman saat puasa.
+            ⏳ <strong>Puasa aktif:</strong> Suplemen berkalori/bersama makan ditunda ke refeeding. Creatine dan magnesium tetap mengikuti slot aman yang sudah ditampilkan.
+          </p>
+        </div>
+      )}
+
+      {fastingContext?.isRefeedDay && (
+        <div className="mb-4 rounded-xl bg-jade-950/40 border border-jade-800/50 p-3">
+          <p className="text-xs text-jade-300">
+            ✅ <strong>Hari refeed:</strong> Suplemen pagi dan siang digeser ke slot refeeding agar kembali sinkron setelah puasa 36 jam.
           </p>
         </div>
       )}
@@ -53,6 +66,7 @@ export default function SupplementCard({ isFastingDay }: SupplementCardProps) {
           const supps = grouped[slot] ?? [];
           if (supps.length === 0) return null;
           const meta = SLOT_META[slot];
+          const timeLabel = supps[0]?.timeRange ?? meta.time;
 
           return (
             <div key={slot} className={cn("rounded-xl border p-3", meta.bg)}>
@@ -65,7 +79,7 @@ export default function SupplementCard({ isFastingDay }: SupplementCardProps) {
                   </span>
                   <div className="flex items-center gap-1 mt-0.5">
                     <Clock size={10} className="text-gray-600" />
-                    <span className="text-[10px] text-gray-600">{meta.time}</span>
+                    <span className="text-[10px] text-gray-600">{timeLabel}</span>
                   </div>
                 </div>
               </div>

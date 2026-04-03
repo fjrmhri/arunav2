@@ -1,20 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import { EXERCISE_SCHEDULE, FASTING_SCHEDULE, MEAL_PLANS, SUPPLEMENTS_BASE } from "@/data/fitness-seed";
 import { SKINCARE_SCHEDULE } from "@/data/skincare-seed";
 import { cn, getDayTypeBg, getDayTypeColor, getDayTypeIcon } from "@/lib/utils";
-import type { DayIndex } from "@/types";
+import type { DayIndex, UserPreferences } from "@/types";
+import { getUserPreferences } from "@/lib/firebase";
+import { getFastingContext, getFastingCycleEventsForMonth } from "@/lib/fasting";
+import { getLocalDateKey } from "@/lib/date";
 
 type PlannerTab = "olahraga" | "nutrisi" | "puasa" | "suplemen" | "skincare";
 
 const DAY_NAMES = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
+function formatEventDateTime(date: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 export default function PlannerPage() {
   const [activeTab, setActiveTab] = useState<PlannerTab>("olahraga");
   const [selectedDay, setSelectedDay] = useState<DayIndex>(1);
+  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
 
   const TABS: { key: PlannerTab; label: string; icon: string }[] = [
     { key: "olahraga", label: "Olahraga", icon: "💪" },
@@ -27,6 +48,21 @@ export default function PlannerPage() {
   const selectedExercise = EXERCISE_SCHEDULE.find((e) => e.dayIndex === selectedDay);
   const selectedMeal = MEAL_PLANS.find((m) => m.dayIndex === selectedDay);
   const selectedSkincare = SKINCARE_SCHEDULE.find((s) => s.dayIndex === selectedDay);
+  const monthlyFastingEvents = getFastingCycleEventsForMonth(prefs, new Date());
+  const todayFastingContext = getFastingContext(getLocalDateKey(), prefs, new Date());
+
+  useEffect(() => {
+    const loadPrefs = async () => {
+      try {
+        const userPrefs = await getUserPreferences();
+        setPrefs(userPrefs);
+      } catch (error) {
+        console.error("Failed to load planner preferences:", error);
+      }
+    };
+
+    void loadPrefs();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
@@ -147,8 +183,8 @@ export default function PlannerPage() {
           <div className="space-y-3">
             {selectedDay === 7 && (
               <div className="rounded-xl bg-indigo-950/50 border border-indigo-800/50 p-3">
-                <p className="text-sm font-display font-semibold text-indigo-300">⚠️ Malam Puasa Dimulai 20:00</p>
-                <p className="text-xs text-indigo-400/80 mt-0.5">Makan malam ini adalah makan terakhir sebelum puasa 36 jam</p>
+                <p className="text-sm font-display font-semibold text-indigo-300">⚠️ Jika Ini Minggu Jadwal Puasa</p>
+                <p className="text-xs text-indigo-400/80 mt-0.5">Gunakan makan malam ini sebagai makan terakhir sebelum puasa 36 jam mulai pukul 20:00.</p>
               </div>
             )}
             {selectedMeal.meals.map((meal, i) => (
@@ -184,8 +220,113 @@ export default function PlannerPage() {
                 ⏳ Puasa 36 Jam (Monk Fast)
               </h2>
               <p className="text-sm text-indigo-400/80">
-                Mulai: <strong>Minggu 20:00</strong> → Selesai: <strong>Selasa 08:00</strong>
+                Siklus berjalan <strong>2 minggu sekali</strong>. Anchor saat ini:{" "}
+                <strong>{prefs?.lastFastStartDate ?? todayFastingContext.anchorDateKey}</strong>
               </p>
+              <p className="text-xs text-indigo-300/80 mt-2 leading-relaxed">
+                Jika `lastFastStartDate` belum pernah diisi, anchor diturunkan secara deterministik dari `startDate` sebagai Minggu pertama pukul 20:00 setelah program dimulai.
+              </p>
+            </div>
+
+            {/* Monthly plan */}
+            <div className="card p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-display font-semibold tracking-wide">
+                    Rencana Bulanan
+                  </p>
+                  <h3 className="text-base font-display font-bold text-gray-200">
+                    {formatMonthLabel(new Date())}
+                  </h3>
+                </div>
+                <div className="rounded-xl border border-indigo-800/50 bg-indigo-950/40 px-3 py-2 text-right">
+                  <p className="text-lg font-display font-bold text-indigo-300">
+                    {monthlyFastingEvents.length}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wide text-indigo-400/80">
+                    Event Puasa
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {monthlyFastingEvents.map((event, index) => {
+                  const contextForStart = getFastingContext(event.startDateKey, prefs, event.startAt);
+                  return (
+                    <div
+                      key={event.startDateKey}
+                      className="rounded-2xl border border-indigo-800/50 bg-indigo-950/30 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <p className="text-xs font-display font-semibold uppercase tracking-wide text-indigo-300">
+                            Siklus #{index + 1}
+                          </p>
+                          <h4 className="text-sm font-display font-bold text-gray-100 mt-0.5">
+                            {formatEventDateTime(event.startAt)} → {formatEventDateTime(event.endAt)}
+                          </h4>
+                        </div>
+                        <span className="rounded-full border border-indigo-700/50 bg-indigo-900/50 px-2.5 py-1 text-[10px] font-display font-semibold text-indigo-200">
+                          36 Jam
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="rounded-xl bg-night-900/70 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-600">
+                            Mulai
+                          </p>
+                          <p className="text-sm text-gray-200 mt-1">
+                            {formatEventDateTime(event.startAt)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Makan terakhir selesai sebelum 20:00.
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-night-900/70 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-600">
+                            Selesai
+                          </p>
+                          <p className="text-sm text-gray-200 mt-1">
+                            {formatEventDateTime(event.endAt)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Lanjutkan refeeding bertahap mulai pukul 08:00.
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-jade-950/30 border border-jade-800/40 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-jade-400/80">
+                            Refeeding
+                          </p>
+                          <p className="text-xs text-jade-300 mt-1 leading-relaxed">
+                            08:00 pembuka ringan: bone broth / putih telur. 09:00 lanjut oatmeal + telur, lalu baru kembali ke pola makan normal.
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-indigo-950/40 border border-indigo-800/40 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-indigo-300/80">
+                            Latihan
+                          </p>
+                          <p className="text-xs text-indigo-200 mt-1 leading-relaxed">
+                            {contextForStart.exerciseGuidance}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-xl bg-blue-950/30 border border-blue-800/40 p-3">
+                        <p className="text-[10px] uppercase tracking-wide text-blue-300/80">
+                          Hidrasi & Elektrolit
+                        </p>
+                        <p className="text-xs text-blue-300 mt-1 leading-relaxed">
+                          Target 3–4 liter selama 36 jam. Campurkan 1/4–1/2 sdt garam laut ke air mineral bila perlu. Hindari puasa kering.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Phases */}

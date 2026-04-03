@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, CheckSquare, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Calendar, CheckSquare, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -23,8 +23,8 @@ const NAV_ITEMS = [
   },
   {
     href: "/safety",
-    label: "Safety",
-    icon: ShieldAlert,
+    label: "Progress",
+    icon: BarChart3,
   },
 ];
 

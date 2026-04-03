@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string; color: stri
   exercise: { label: "Latihan", icon: "💪", color: "text-jade-400" },
   nutrition: { label: "Nutrisi & Makan", icon: "🍽️", color: "text-earth-400" },
   supplement: { label: "Suplemen", icon: "💊", color: "text-emerald-400" },
+  fasting: { label: "Puasa 36 Jam", icon: "⏳", color: "text-indigo-300" },
   skincare_am: { label: "Skincare Pagi", icon: "☀️", color: "text-yellow-400" },
   skincare_pm: { label: "Skincare Malam", icon: "🌙", color: "text-blue-400" },
   hydration: { label: "Hidrasi", icon: "💧", color: "text-blue-400" },
@@ -25,7 +26,7 @@ export default function TrackerPage() {
     completedIds,
     progressPercent,
     log,
-    isFastingDay,
+    fastingContext,
     skincare,
     toggleTask,
     updateNotes,
@@ -115,16 +116,48 @@ export default function TrackerPage() {
         </div>
 
         {/* Fasting day note */}
-        {isFastingDay && (
+        {fastingContext?.isStrictFastDay && (
           <div className="rounded-2xl border border-indigo-800/60 bg-indigo-950/50 p-4">
             <div className="flex items-start gap-2">
               <span className="text-lg">⏳</span>
               <div>
                 <p className="text-sm font-display font-semibold text-indigo-300">
-                  Hari Puasa (Selasa)
+                  Puasa 36 Jam Sedang Aktif
                 </p>
                 <p className="text-xs text-indigo-400/80 mt-0.5">
-                  Berbuka pukul 08:00 dengan bone broth / putih telur rebus. Latihan berat dilarang. Creatine aman dikonsumsi saat puasa.
+                  Tanpa kalori sampai refeeding selesai. Prioritaskan 3–4 liter air, elektrolit bila perlu, dan hindari latihan berat.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {fastingContext?.isFastStartDay && !fastingContext.isStrictFastDay && (
+          <div className="rounded-2xl border border-indigo-800/60 bg-indigo-950/50 p-4">
+            <div className="flex items-start gap-2">
+              <span className="text-lg">🌙</span>
+              <div>
+                <p className="text-sm font-display font-semibold text-indigo-300">
+                  Puasa Mulai Pukul 20:00
+                </p>
+                <p className="text-xs text-indigo-400/80 mt-0.5">
+                  Jadikan makan malam sebagai makan terakhir pra-puasa, siapkan air mineral, dan jaga latihan tetap moderat.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {fastingContext?.isRefeedDay && !fastingContext.isActiveFastingWindow && (
+          <div className="rounded-2xl border border-jade-800/60 bg-jade-950/40 p-4">
+            <div className="flex items-start gap-2">
+              <span className="text-lg">🍲</span>
+              <div>
+                <p className="text-sm font-display font-semibold text-jade-300">
+                  Refeeding Day
+                </p>
+                <p className="text-xs text-jade-300/80 mt-0.5">
+                  Buka dengan bone broth / putih telur, lanjutkan oatmeal + telur, lalu tahan latihan berat sampai energi stabil.
                 </p>
               </div>
             </div>
@@ -235,9 +268,9 @@ export default function TrackerPage() {
             </span>
           </div>
           <p className="text-xs text-gray-500">
-            Target: {isFastingDay ? "3–4 liter (hari puasa)" : "2–3 liter per hari"}
+            Target: {fastingContext?.isFastingDay ? "3–4 liter (hari puasa / refeed)" : "2–3 liter per hari"}
           </p>
-          {isFastingDay && (
+          {fastingContext?.isFastingDay && (
             <p className="text-xs text-indigo-400 mt-1">
               Tambahkan 1/4 sdt garam laut ke dalam air mineral untuk elektrolit
             </p>

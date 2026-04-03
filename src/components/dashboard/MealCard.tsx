@@ -4,12 +4,14 @@ import { Utensils, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { MealPlan } from "@/types";
 import { NUTRITION_TARGET } from "@/data/fitness-seed";
+import type { FastingContext } from "@/lib/fasting";
 
 interface MealCardProps {
   mealPlan: MealPlan;
+  fastingContext?: FastingContext | null;
 }
 
-export default function MealCard({ mealPlan }: MealCardProps) {
+export default function MealCard({ mealPlan, fastingContext }: MealCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -105,10 +107,26 @@ export default function MealCard({ mealPlan }: MealCardProps) {
         </div>
       )}
 
-      {mealPlan.isFastingDay && (
+      {fastingContext?.isStrictFastDay && (
         <div className="mt-2 rounded-lg bg-indigo-950/50 border border-indigo-800/50 p-2.5">
           <p className="text-xs text-indigo-400">
-            ⏳ Hari ini adalah hari puasa (Selasa). Berbuka pukul 08:00 dengan bone broth / putih telur rebus terlebih dahulu.
+            ⏳ Puasa aktif penuh hari ini. Tidak ada makan utama sampai refeeding besok pagi.
+          </p>
+        </div>
+      )}
+
+      {fastingContext?.isRefeedDay && (
+        <div className="mt-2 rounded-lg bg-jade-950/40 border border-jade-800/50 p-2.5">
+          <p className="text-xs text-jade-300">
+            ✅ Refeeding day. Mulai dengan pembuka ringan pukul 08:00, lanjutkan tahap 2 sekitar 09:00, lalu baru kembali ke pola makan normal.
+          </p>
+        </div>
+      )}
+
+      {fastingContext?.isFastStartDay && !fastingContext.isStrictFastDay && (
+        <div className="mt-2 rounded-lg bg-indigo-950/50 border border-indigo-800/50 p-2.5">
+          <p className="text-xs text-indigo-400">
+            🌙 Puasa 36 jam dimulai pukul 20:00 malam ini. Pastikan makan terakhir selesai sebelum waktu mulai dan prioritaskan hidrasi.
           </p>
         </div>
       )}

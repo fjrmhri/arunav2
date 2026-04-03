@@ -4,6 +4,12 @@
 // ============================================================
 
 import type { CompletionLog, UserPreferences } from "@/types";
+import {
+  addDaysToDateKey,
+  getDateKeysInRange,
+  getLocalDateKey,
+  parseLocalDateKey,
+} from "@/lib/date";
 
 // ---- Cek apakah Firebase dikonfigurasi ----
 const isFirebaseConfigured = (): boolean => {
@@ -103,7 +109,7 @@ export async function saveCompletionLog(
 const DEFAULT_PREFS: UserPreferences = {
   userId: "default",
   name: "Aruna",
-  startDate: new Date().toISOString().split("T")[0],
+  startDate: getLocalDateKey(),
   cycleDay: 1,
   isOutdoor: false,
   notificationsEnabled: false,
@@ -149,6 +155,47 @@ export async function saveUserPreferences(
   }
 }
 
+export async function getCompletionLogsInRange(
+  startDateKey: string,
+  endDateKey: string
+): Promise<CompletionLog[]> {
+  const db = await getFirestore();
+
+  if (db) {
+    try {
+      const {
+        collection,
+        getDocs,
+        orderBy,
+        query,
+        where,
+      } = await import("firebase/firestore");
+
+      const logsQuery = query(
+        collection(db, "completion_logs"),
+        where("dateKey", ">=", startDateKey),
+        where("dateKey", "<=", endDateKey),
+        orderBy("dateKey", "asc")
+      );
+      const snapshot = await getDocs(logsQuery);
+
+      return snapshot.docs.map((doc) => doc.data() as CompletionLog);
+    } catch (e) {
+      console.warn("Firestore read range failed:", e);
+    }
+  }
+
+  if (typeof window === "undefined") return [];
+
+  return getDateKeysInRange(startDateKey, endDateKey)
+    .map((dateKey) => {
+      const raw = localStorage.getItem(`log_${dateKey}`);
+      return raw ? (JSON.parse(raw) as CompletionLog) : null;
+    })
+    .filter((log): log is CompletionLog => !!log)
+    .sort((left, right) => left.dateKey.localeCompare(right.dateKey));
+}
+
 // ============================================================
 // STREAK CALCULATION
 // ============================================================
@@ -157,17 +204,16 @@ export async function getStreak(today: string): Promise<number> {
   if (typeof window === "undefined") return 0;
 
   let streak = 0;
-  const d = new Date(today);
+  let key = getLocalDateKey(parseLocalDateKey(today));
 
   for (let i = 0; i < 60; i++) {
-    const key = d.toISOString().split("T")[0];
     const log = await getCompletionLog(key);
     if (log && log.completedTaskIds.length > 0) {
       streak++;
     } else if (i > 0) {
       break;
     }
-    d.setDate(d.getDate() - 1);
+    key = addDaysToDateKey(key, -1);
   }
 
   return streak;

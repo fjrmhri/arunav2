@@ -21,6 +21,7 @@ export default function DashboardPage() {
     prefs,
     streak,
     loading,
+    fastingContext,
     exercise,
     skincare,
     mealPlan,
@@ -113,14 +114,14 @@ export default function DashboardPage() {
       {/* Fasting / prep alert */}
       {(isFastingDay || isFastingPrepDay) && (
         <div className="px-5 mb-4">
-          <FastingCard />
+          <FastingCard fastingContext={fastingContext} />
         </div>
       )}
 
       <div className="px-5 mb-4">
         <AppActionsCard
           dateKey={dateKey}
-          isFastingDay={isFastingDay}
+          fastingContext={fastingContext}
           notificationsEnabled={!!prefs?.notificationsEnabled}
           supplements={supplementSchedule.supplements}
           onNotificationSettingChange={setNotificationsEnabled}
@@ -161,11 +162,14 @@ export default function DashboardPage() {
         {activeTab === "overview" && (
           <>
             {exercise && <ExerciseCard exercise={exercise} />}
-            {mealPlan && <MealCard mealPlan={mealPlan} />}
+            {mealPlan && <MealCard mealPlan={mealPlan} fastingContext={fastingContext} />}
             {skincare && (
               <SkincareCard skincare={skincare} isOutdoor={prefs?.isOutdoor} />
             )}
-            <SupplementCard isFastingDay={isFastingDay} />
+            <SupplementCard
+              schedule={supplementSchedule}
+              fastingContext={fastingContext}
+            />
           </>
         )}
 
@@ -173,13 +177,16 @@ export default function DashboardPage() {
           <ExerciseCard exercise={exercise} />
         )}
         {activeTab === "nutrition" && mealPlan && (
-          <MealCard mealPlan={mealPlan} />
+          <MealCard mealPlan={mealPlan} fastingContext={fastingContext} />
         )}
         {activeTab === "skincare" && skincare && (
           <SkincareCard skincare={skincare} isOutdoor={prefs?.isOutdoor} />
         )}
         {activeTab === "supplements" && (
-          <SupplementCard isFastingDay={isFastingDay} />
+          <SupplementCard
+            schedule={supplementSchedule}
+            fastingContext={fastingContext}
+          />
         )}
 
         {/* Siklus info */}
