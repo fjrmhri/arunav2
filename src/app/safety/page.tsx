@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import { getCompletionLogsInRange, getStreak, getUserPreferences } from "@/lib/firebase";
+import { filterValidTaskIds } from "@/lib/completion";
 import { getDateKeysInRange, getLocalDateKey } from "@/lib/date";
 import {
   calendarDayToCycleDay,
@@ -67,11 +68,14 @@ export default function SafetyPage() {
         );
         const series = getDateKeysInRange(prefs.startDate, today).map((dateKey) => {
           const dayIndex = calendarDayToCycleDay(dateKey, prefs.startDate);
-          const totalCount = generateTasks(dayIndex, dateKey, prefs).length;
-          const completedCount = Math.min(
-            logMap.get(dateKey)?.completedTaskIds.length ?? 0,
-            totalCount,
+          const validTaskIds = generateTasks(dayIndex, dateKey, prefs).map(
+            (task) => task.id,
           );
+          const totalCount = validTaskIds.length;
+          const completedCount = filterValidTaskIds(
+            logMap.get(dateKey)?.completedTaskIds ?? [],
+            validTaskIds,
+          ).length;
 
           return {
             dateKey,

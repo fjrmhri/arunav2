@@ -16,6 +16,10 @@ import {
   getMealPlanForDate,
   getSupplementScheduleForDate,
 } from "@/lib/fasting";
+import {
+  hasCompletionLogTaskMismatch,
+  sanitizeCompletionLog,
+} from "@/lib/completion";
 import type { DayIndex, CompletionLog, UserPreferences } from "@/types";
 
 export function useTracker() {
@@ -46,7 +50,8 @@ export function useTracker() {
   const isFastingPrepDay = !!fastingContext?.isFastStartDay;
 
   // Computed progress
-  const completedIds = log?.completedTaskIds ?? [];
+  const sanitizedLog = log ? sanitizeCompletionLog(log, allTaskIds) : null;
+  const completedIds = sanitizedLog?.completedTaskIds ?? [];
   const progressPercent =
     allTaskIds.length > 0
       ? Math.round((completedIds.length / allTaskIds.length) * 100)
@@ -82,18 +87,28 @@ export function useTracker() {
     load();
   }, [dateKey]);
 
+  useEffect(() => {
+    if (!log) return;
+    if (allTaskIds.length === 0) return;
+    if (!hasCompletionLogTaskMismatch(log, allTaskIds)) return;
+
+    const cleanedLog = sanitizeCompletionLog(log, allTaskIds);
+    setLog(cleanedLog);
+    void saveCompletionLog(dateKey, cleanedLog);
+  }, [log, allTaskIds, dateKey]);
+
   // Toggle task completion
   const toggleTask = useCallback(
     async (taskId: string) => {
-      if (!log) return;
+      if (!sanitizedLog) return;
 
-      const isCompleted = log.completedTaskIds.includes(taskId);
+      const isCompleted = sanitizedLog.completedTaskIds.includes(taskId);
       const newCompleted = isCompleted
-        ? log.completedTaskIds.filter((id) => id !== taskId)
-        : [...log.completedTaskIds, taskId];
+        ? sanitizedLog.completedTaskIds.filter((id) => id !== taskId)
+        : [...sanitizedLog.completedTaskIds, taskId];
 
       const newLog: CompletionLog = {
-        ...log,
+        ...sanitizedLog,
         completedTaskIds: newCompleted,
         lastUpdated: Date.now(),
       };
@@ -101,37 +116,37 @@ export function useTracker() {
       setLog(newLog);
       await saveCompletionLog(dateKey, newLog);
     },
-    [log, dateKey]
+    [sanitizedLog, dateKey]
   );
 
   // Update notes
   const updateNotes = useCallback(
     async (notes: string) => {
-      if (!log) return;
+      if (!sanitizedLog) return;
       const newLog: CompletionLog = {
-        ...log,
+        ...sanitizedLog,
         notes,
         lastUpdated: Date.now(),
       };
       setLog(newLog);
       await saveCompletionLog(dateKey, newLog);
     },
-    [log, dateKey]
+    [sanitizedLog, dateKey]
   );
 
   // Update skin reaction
   const updateSkinReaction = useCallback(
     async (reaction: CompletionLog["skinReaction"]) => {
-      if (!log) return;
+      if (!sanitizedLog) return;
       const newLog: CompletionLog = {
-        ...log,
+        ...sanitizedLog,
         skinReaction: reaction,
         lastUpdated: Date.now(),
       };
       setLog(newLog);
       await saveCompletionLog(dateKey, newLog);
     },
-    [log, dateKey]
+    [sanitizedLog, dateKey]
   );
 
   // Toggle outdoor mode
@@ -158,7 +173,7 @@ export function useTracker() {
     dateKey,
     dayIndex,
     prefs,
-    log,
+    log: sanitizedLog,
     streak,
     loading,
     baseExercise,
