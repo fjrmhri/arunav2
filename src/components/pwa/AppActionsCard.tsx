@@ -10,7 +10,10 @@ import {
   Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatReminderTime, getSupplementReminderSlots } from "@/lib/supplementReminders";
+import {
+  formatReminderTime,
+  getSupplementReminderSlots,
+} from "@/lib/supplementReminders";
 import type { Supplement } from "@/types";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -28,7 +31,11 @@ interface AppActionsCardProps {
 
 type NotificationState = NotificationPermission | "unsupported";
 
-async function showReminderNotification(title: string, body: string, tag: string) {
+async function showReminderNotification(
+  title: string,
+  body: string,
+  tag: string,
+) {
   if ("serviceWorker" in navigator) {
     const registration = await navigator.serviceWorker.ready;
     await registration.showNotification(title, {
@@ -58,14 +65,19 @@ export default function AppActionsCard({
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [standaloneMode, setStandaloneMode] = useState(false);
+  const [serviceWorkerAktif, setServiceWorkerAktif] = useState(false);
+  const [promptInstallTersedia, setPromptInstallTersedia] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [notificationState, setNotificationState] =
     useState<NotificationState>("unsupported");
-  const [nextReminderLabel, setNextReminderLabel] = useState<string | null>(null);
+  const [nextReminderLabel, setNextReminderLabel] = useState<string | null>(
+    null,
+  );
 
   const reminderSlots = useMemo(
     () => getSupplementReminderSlots(dateKey, supplements, isFastingDay),
-    [dateKey, supplements, isFastingDay]
+    [dateKey, supplements, isFastingDay],
   );
 
   useEffect(() => {
@@ -73,30 +85,59 @@ export default function AppActionsCard({
 
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
+        true;
     setIsInstalled(standalone);
+    setStandaloneMode(standalone);
+
+    setPromptInstallTersedia(false);
+
+    if (navigator.serviceWorker) {
+      if (navigator.serviceWorker.controller) {
+        setServiceWorkerAktif(true);
+      }
+
+      navigator.serviceWorker.ready
+        .then(() => {
+          setServiceWorkerAktif(true);
+          console.log("[PWA] Service worker ready");
+        })
+        .catch((error) => {
+          console.error("[PWA] Service worker ready error:", error);
+          setServiceWorkerAktif(false);
+        });
+    } else {
+      setServiceWorkerAktif(false);
+      console.warn("[PWA] serviceWorker is not available in this browser");
+    }
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
+      const deferredEvent = event as BeforeInstallPromptEvent;
+      setDeferredPrompt(deferredEvent);
+      setPromptInstallTersedia(true);
+      console.log("[PWA] beforeinstallprompt available");
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
+      setStandaloneMode(true);
       setDeferredPrompt(null);
+      setPromptInstallTersedia(false);
       setShowInstallHelp(false);
+      console.log("[PWA] appinstalled event fired");
     };
 
     window.addEventListener(
       "beforeinstallprompt",
-      handleBeforeInstallPrompt as EventListener
+      handleBeforeInstallPrompt as EventListener,
     );
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener(
         "beforeinstallprompt",
-        handleBeforeInstallPrompt as EventListener
+        handleBeforeInstallPrompt as EventListener,
       );
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
@@ -115,13 +156,13 @@ export default function AppActionsCard({
   useEffect(() => {
     const now = Date.now();
     const nextReminder = reminderSlots.find(
-      (slot) => slot.scheduledAt.getTime() > now
+      (slot) => slot.scheduledAt.getTime() > now,
     );
 
     setNextReminderLabel(
       nextReminder
         ? `${formatReminderTime(nextReminder.remindAt)} • ${nextReminder.items.join(", ")}`
-        : null
+        : null,
     );
   }, [reminderSlots]);
 
@@ -132,13 +173,13 @@ export default function AppActionsCard({
     const fireDueReminders = async () => {
       const now = Date.now();
       const nextReminder = reminderSlots.find(
-        (slot) => slot.scheduledAt.getTime() > now
+        (slot) => slot.scheduledAt.getTime() > now,
       );
 
       setNextReminderLabel(
         nextReminder
           ? `${formatReminderTime(nextReminder.remindAt)} • ${nextReminder.items.join(", ")}`
-          : null
+          : null,
       );
 
       for (const slot of reminderSlots) {
@@ -209,6 +250,18 @@ export default function AppActionsCard({
     await onNotificationSettingChange(false);
   };
 
+  const installButtonLabel = isInstalled
+    ? "Aplikasi Terpasang"
+    : promptInstallTersedia
+      ? "Install App"
+      : "Tambahkan ke Home Screen";
+
+  const installButtonDescription = isInstalled
+    ? "PWA sudah aktif. Buka dari home screen untuk pengalaman seperti aplikasi."
+    : promptInstallTersedia
+      ? "Gunakan prompt install browser jika tersedia."
+      : "Prompt install tidak tersedia; gunakan menu browser (Add to Home screen) untuk install manual.";
+
   return (
     <div className="card p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -225,7 +278,7 @@ export default function AppActionsCard({
             "rounded-2xl border px-4 py-3 text-left transition-all",
             isInstalled
               ? "bg-jade-950/40 border-jade-800/50"
-              : "bg-night-800/50 border-night-700/50 hover:border-jade-700/50"
+              : "bg-night-800/50 border-night-700/50 hover:border-jade-700/50",
           )}
         >
           <div className="flex items-center gap-2 mb-1">
@@ -235,19 +288,11 @@ export default function AppActionsCard({
               <Download size={16} className="text-jade-400" />
             )}
             <span className="text-sm font-display font-semibold text-gray-200">
-              {isInstalled
-                ? "Aplikasi Terpasang"
-                : deferredPrompt
-                ? "Install App"
-                : "Cara Install"}
+              {installButtonLabel}
             </span>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
-            {isInstalled
-              ? "PWA sudah aktif. Buka dari home screen untuk pengalaman seperti aplikasi."
-              : deferredPrompt
-              ? "Gunakan prompt install langsung dari browser mobile."
-              : "Jika Chrome mobile tidak menampilkan menu install, buka panduan singkat di sini."}
+            {installButtonDescription}
           </p>
         </button>
 
@@ -258,7 +303,7 @@ export default function AppActionsCard({
             "rounded-2xl border px-4 py-3 text-left transition-all disabled:opacity-60",
             notificationsEnabled
               ? "bg-indigo-950/40 border-indigo-800/50"
-              : "bg-night-800/50 border-night-700/50 hover:border-indigo-700/50"
+              : "bg-night-800/50 border-night-700/50 hover:border-indigo-700/50",
           )}
         >
           <div className="flex items-center gap-2 mb-1">
@@ -275,12 +320,25 @@ export default function AppActionsCard({
             {notificationState === "unsupported"
               ? "Browser ini tidak mendukung Notification API."
               : notificationsEnabled
-              ? nextReminderLabel
-                ? `Reminder berikutnya: ${nextReminderLabel}`
-                : "Tidak ada reminder tersisa untuk hari ini."
-              : "Notifikasi akan muncul 5 menit sebelum jadwal suplemen."}
+                ? nextReminderLabel
+                  ? `Reminder berikutnya: ${nextReminderLabel}`
+                  : "Tidak ada reminder tersisa untuk hari ini."
+                : "Notifikasi akan muncul 5 menit sebelum jadwal suplemen."}
           </p>
         </button>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-night-700/50 bg-night-900/60 p-3 text-xs text-gray-400">
+        <p className="font-semibold text-gray-200 text-[11px]">
+          Status PWA (diagnostik):
+        </p>
+        <ul className="mt-1 list-disc list-inside space-y-1">
+          <li>SW aktif: {serviceWorkerAktif ? "Ya" : "Tidak"}</li>
+          <li>
+            Prompt install tersedia: {promptInstallTersedia ? "Ya" : "Tidak"}
+          </li>
+          <li>Mode standalone: {standaloneMode ? "Ya" : "Tidak"}</li>
+        </ul>
       </div>
 
       {showInstallHelp && !isInstalled && (
@@ -289,13 +347,18 @@ export default function AppActionsCard({
             <Info size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-gray-400 leading-relaxed space-y-1">
               <p>
-                Di Android Chrome, tombol install tidak selalu muncul di menu. Prompt install biasanya baru aktif setelah service worker terbaca dan browser menganggap situs layak di-install.
+                Di Android Chrome, tombol install tidak selalu muncul di menu.
+                Prompt install biasanya baru aktif setelah service worker
+                terbaca dan browser menganggap situs layak di-install.
               </p>
               <p>
-                Coba refresh sekali, lalu buka lagi halaman ini. Jika event install sudah tersedia, tombol di atas akan berubah menjadi <strong className="text-gray-200">Install App</strong>.
+                Coba refresh sekali, lalu buka lagi halaman ini. Jika event
+                install sudah tersedia, tombol di atas akan berubah menjadi{" "}
+                <strong className="text-gray-200">Install App</strong>.
               </p>
               <p>
-                Jika tetap belum tersedia, situs masih bisa ditambahkan manual ke home screen dari menu browser bila Chrome mengizinkannya.
+                Jika tetap belum tersedia, situs masih bisa ditambahkan manual
+                ke home screen dari menu browser bila Chrome mengizinkannya.
               </p>
             </div>
           </div>
@@ -304,12 +367,17 @@ export default function AppActionsCard({
 
       {notificationState === "denied" && (
         <div className="mt-3 rounded-2xl border border-red-800/40 bg-red-950/30 p-3 text-xs text-red-300 leading-relaxed">
-          Izin notifikasi sedang diblokir. Buka pengaturan site di browser, ubah permission notifikasi ke <strong>Allow</strong>, lalu aktifkan reminder lagi.
+          Izin notifikasi sedang diblokir. Buka pengaturan site di browser, ubah
+          permission notifikasi ke <strong>Allow</strong>, lalu aktifkan
+          reminder lagi.
         </div>
       )}
 
       <p className="mt-3 text-[11px] text-gray-600 leading-relaxed">
-        Reminder bekerja paling baik saat situs sudah dibuka minimal sekali dan idealnya dipasang sebagai app. Untuk notifikasi yang tetap pasti muncul saat app benar-benar tertutup lama, nanti perlu push notification berbasis server.
+        Reminder bekerja paling baik saat situs sudah dibuka minimal sekali dan
+        idealnya dipasang sebagai app. Untuk notifikasi yang tetap pasti muncul
+        saat app benar-benar tertutup lama, nanti perlu push notification
+        berbasis server.
       </p>
     </div>
   );
