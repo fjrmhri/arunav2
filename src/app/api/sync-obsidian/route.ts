@@ -116,7 +116,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // 2. Dashboard progress.md
-  if (progressData) {
+  if (progressData && progressData.last7 && progressData.last30) {
     try {
       const dashboard = generateProgressDashboard(progressData);
       await upsertFile(dashboard.filePath, dashboard.content);
