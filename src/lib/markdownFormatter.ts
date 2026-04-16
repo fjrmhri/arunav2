@@ -6,19 +6,24 @@
 import type { CompletionLog } from "@/types";
 import { parseLocalDateKey } from "@/lib/date";
 import { getDayIndexFromDateKey, getDayTypeLabel } from "@/lib/utils";
-import { getExercisePlanForDate, getMealPlanForDate, getSupplementScheduleForDate, getFastingContext } from "@/lib/fasting";
+import {
+  getExercisePlanForDate,
+  getMealPlanForDate,
+  getSupplementScheduleForDate,
+  getFastingContext,
+} from "@/lib/fasting";
 import { getSkincarePlanForDay } from "@/data/skincare-seed";
 import type { UserPreferences } from "@/types";
 
 export interface ObsidianDailyNote {
-  filePath: string;   // obsidian-vault/daily/2026-04-16 Pull Day.md
-  content:  string;
-  dateKey:  string;
+  filePath: string; // obsidian-vault/daily/2026-04-16 Pull Day.md
+  content: string;
+  dateKey: string;
 }
 
 export interface ObsidianDashboard {
   filePath: string;
-  content:  string;
+  content: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────
@@ -26,19 +31,22 @@ export interface ObsidianDashboard {
 function formatDateId(dateKey: string): string {
   const d = parseLocalDateKey(dateKey);
   return d.toLocaleDateString("id-ID", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
 function parseCategoryFromId(taskId: string) {
   // ${dateKey}_ex_main | _ex_0 | _meal_0 | _supp_0 | _skin_am | _skin_pm_0 | _hydration | _fasting
   const parts = taskId.split("_");
-  if (parts.includes("ex"))       return "exercise";
-  if (parts.includes("meal"))     return "nutrition";
-  if (parts.includes("supp"))     return "supplement";
-  if (parts.includes("skin"))     return "skincare";
-  if (parts.includes("hydration"))return "hydration";
-  if (parts.includes("fasting"))  return "fasting";
+  if (parts.includes("ex")) return "exercise";
+  if (parts.includes("meal")) return "nutrition";
+  if (parts.includes("supp")) return "supplement";
+  if (parts.includes("skin")) return "skincare";
+  if (parts.includes("hydration")) return "hydration";
+  if (parts.includes("fasting")) return "fasting";
   return "other";
 }
 
@@ -49,15 +57,15 @@ export function generateDailyNote(
   prefs: UserPreferences,
 ): ObsidianDailyNote {
   const { dateKey } = log;
-  const dayIndex    = getDayIndexFromDateKey(dateKey);
-  const exercise    = getExercisePlanForDate(dayIndex, dateKey, prefs);
-  const mealPlan    = getMealPlanForDate(dayIndex, dateKey, prefs);
-  const suppSched   = getSupplementScheduleForDate(dayIndex, dateKey, prefs);
-  const skincare    = getSkincarePlanForDay(dayIndex);
-  const fastCtx     = getFastingContext(dateKey, prefs);
-  const dayLabel    = getDayTypeLabel(exercise.type);
+  const dayIndex = getDayIndexFromDateKey(dateKey);
+  const exercise = getExercisePlanForDate(dayIndex, dateKey, prefs);
+  const mealPlan = getMealPlanForDate(dayIndex, dateKey, prefs);
+  const suppSched = getSupplementScheduleForDate(dayIndex, dateKey, prefs);
+  const skincare = getSkincarePlanForDay(dayIndex);
+  const fastCtx = getFastingContext(dateKey, prefs);
+  const dayLabel = getDayTypeLabel(exercise.type);
 
-  const completed  = new Set(log.completedTaskIds);
+  const completed = new Set(log.completedTaskIds);
   const totalTasks = log.completedTaskIds.length + log.skippedTaskIds.length; // approximate
 
   // ── Count by category ─────────────────────────────────
@@ -70,11 +78,11 @@ export function generateDailyNote(
 
   // ── Tags ──────────────────────────────────────────────
   const tags: string[] = ["#health", "#arunav2"];
-  if (doneByCategory["exercise"]?.length)   tags.push("#gym");
-  if (doneByCategory["nutrition"]?.length)  tags.push("#nutrition");
-  if (doneByCategory["skincare"]?.length)   tags.push("#skincare");
-  if (fastCtx.isFastingDay)                 tags.push("#puasa");
-  if (fastCtx.isRefeedDay)                  tags.push("#refeed");
+  if (doneByCategory["exercise"]?.length) tags.push("#gym");
+  if (doneByCategory["nutrition"]?.length) tags.push("#nutrition");
+  if (doneByCategory["skincare"]?.length) tags.push("#skincare");
+  if (fastCtx.isFastingDay) tags.push("#puasa");
+  if (fastCtx.isRefeedDay) tags.push("#refeed");
 
   // ── Exercise section ──────────────────────────────────
   let exerciseSection = "";
@@ -82,18 +90,21 @@ export function generateDailyNote(
     exerciseSection = `\n## 🏋️ Latihan — ${exercise.label}\n\n`;
     exerciseSection += `> Durasi: ${exercise.duration}\n\n`;
     for (const ex of exercise.exercises) {
-      const id    = `${dateKey}_ex_${exercise.exercises.indexOf(ex)}`;
+      const id = `${dateKey}_ex_${exercise.exercises.indexOf(ex)}`;
       const check = completed.has(id) ? "x" : " ";
-      const meta  = [
+      const meta = [
         ex.sets ? `${ex.sets} set` : "",
         ex.reps ? `× ${ex.reps}` : "",
-        ex.rpe  ? `RPE ${ex.rpe}` : "",
+        ex.rpe ? `RPE ${ex.rpe}` : "",
         ex.rest ? `rest ${ex.rest}` : "",
-      ].filter(Boolean).join(" · ");
+      ]
+        .filter(Boolean)
+        .join(" · ");
       exerciseSection += `- [${check}] **${ex.name}** ${meta ? `— ${meta}` : ""}\n`;
     }
-    if (exercise.warmup)   exerciseSection += `\n> Warmup: ${exercise.warmup}\n`;
-    if (exercise.cooldown) exerciseSection += `> Cooldown: ${exercise.cooldown}\n`;
+    if (exercise.warmup) exerciseSection += `\n> Warmup: ${exercise.warmup}\n`;
+    if (exercise.cooldown)
+      exerciseSection += `> Cooldown: ${exercise.cooldown}\n`;
   }
 
   // ── Nutrition section ────────────────────────────────
@@ -103,14 +114,15 @@ export function generateDailyNote(
   } else {
     nutritionSection = `\n## 🍽️ Nutrisi\n\n`;
     mealPlan.meals.forEach((meal, i) => {
-      const id    = `${dateKey}_meal_${i}`;
+      const id = `${dateKey}_meal_${i}`;
       const check = completed.has(id) ? "x" : " ";
       nutritionSection += `### ${meal.label} (${meal.time})\n`;
       nutritionSection += `- [${check}] **${meal.label}** selesai\n`;
       for (const item of meal.items) {
         nutritionSection += `  - ${item}\n`;
       }
-      if (meal.kcal) nutritionSection += `  - 📊 ${meal.kcal} kkal · ${meal.protein}g protein\n`;
+      if (meal.kcal)
+        nutritionSection += `  - 📊 ${meal.kcal} kkal · ${meal.protein}g protein\n`;
       nutritionSection += "\n";
     });
   }
@@ -121,7 +133,7 @@ export function generateDailyNote(
     suppSection += "> Suplemen berkalori ditunda ke refeeding besok.\n";
   } else {
     suppSched.supplements.forEach((supp, i) => {
-      const id    = `${dateKey}_supp_${i}`;
+      const id = `${dateKey}_supp_${i}`;
       const check = completed.has(id) ? "x" : " ";
       suppSection += `- [${check}] **${supp.name}** ${supp.dose} — ${supp.timeRange}\n`;
     });
@@ -129,17 +141,17 @@ export function generateDailyNote(
 
   // ── Skincare section ─────────────────────────────────
   let skincareSection = `\n## 🧴 Skincare — ${skincare.dayName} (${skincare.pmLabel})\n\n`;
-  const skinAmId      = `${dateKey}_skin_am`;
-  const skinAmCheck   = completed.has(skinAmId) ? "x" : " ";
-  skincareSection    += `- [${skinAmCheck}] **Pagi** — ${skincare.amRoutine.map(s => s.productShort).join(" → ")}\n`;
+  const skinAmId = `${dateKey}_skin_am`;
+  const skinAmCheck = completed.has(skinAmId) ? "x" : " ";
+  skincareSection += `- [${skinAmCheck}] **Pagi** — ${skincare.amRoutine.map((s) => s.productShort).join(" → ")}\n`;
   skincare.pmRoutine.forEach((step, i) => {
-    const id    = `${dateKey}_skin_pm_${i}`;
+    const id = `${dateKey}_skin_pm_${i}`;
     const check = completed.has(id) ? "x" : " ";
     skincareSection += `- [${check}] **Malam** — ${step.productShort}${step.notes ? ` _(${step.notes})_` : ""}\n`;
   });
 
   // ── Hydration ────────────────────────────────────────
-  const hydrationId    = `${dateKey}_hydration`;
+  const hydrationId = `${dateKey}_hydration`;
   const hydrationCheck = completed.has(hydrationId) ? "x" : " ";
   const hydrationTarget = fastCtx.isFastingDay ? "3–4 Liter" : "2–3 Liter";
   const hydrationSection = `\n## 💧 Hidrasi\n\n- [${hydrationCheck}] Target ${hydrationTarget}\n`;
@@ -150,9 +162,9 @@ export function generateDailyNote(
     fastingSection = `\n## ⏳ Puasa\n\n> Puasa dimulai 20:00 malam ini. Makan terakhir sebelum pukul 20:00.\n`;
   } else if (fastCtx.isRefeedDay) {
     fastingSection = `\n## ⏳ Refeeding\n\n> Puasa selesai. Refeeding bertahap mulai 08:00.\n`;
-    const fastingId    = `${dateKey}_fasting`;
+    const fastingId = `${dateKey}_fasting`;
     const fastingCheck = completed.has(fastingId) ? "x" : " ";
-    fastingSection    += `- [${fastingCheck}] Refeeding selesai\n`;
+    fastingSection += `- [${fastingCheck}] Refeeding selesai\n`;
   } else if (fastCtx.isStrictFastDay) {
     fastingSection = `\n## ⏳ Puasa Aktif\n\n> ${fastCtx.hourElapsed}j / 36j — ${fastCtx.percentComplete}% selesai\n`;
     fastingSection += `> Elektrolit + air 3–4L. Tidak ada latihan resistensi.\n`;
@@ -164,13 +176,15 @@ export function generateDailyNote(
     notesSection = `\n## 📝 Catatan\n\n${log.notes.trim()}\n`;
   }
   if (log.skinReaction && log.skinReaction !== "none") {
-    const reactionLabel = log.skinReaction === "mild" ? "Ringan ⚠️" : "Parah 🔴";
+    const reactionLabel =
+      log.skinReaction === "mild" ? "Ringan ⚠️" : "Parah 🔴";
     notesSection += `\n> **Reaksi Kulit:** ${reactionLabel}\n`;
   }
 
   // ── Summary ──────────────────────────────────────────
   const completedCount = log.completedTaskIds.length;
-  const summarySection = `\n## 📊 Summary\n\n| Kategori | Selesai |\n|---|---|\n` +
+  const summarySection =
+    `\n## 📊 Summary\n\n| Kategori | Selesai |\n|---|---|\n` +
     `| Latihan | ${doneByCategory["exercise"]?.length ?? 0} task |\n` +
     `| Nutrisi | ${doneByCategory["nutrition"]?.length ?? 0} meal |\n` +
     `| Suplemen | ${doneByCategory["supplement"]?.length ?? 0} item |\n` +
@@ -206,7 +220,7 @@ export function generateDailyNote(
   const fileName = `${dateKey} ${dayLabel}.md`;
 
   return {
-    filePath: `daily/${fileName}`,
+    filePath: `My Life/daily/${fileName}`,
     content,
     dateKey,
   };
@@ -225,29 +239,33 @@ export interface ProgressData {
   startDate: string;
 }
 
-export function generateProgressDashboard(data: ProgressData): ObsidianDashboard {
-  const now       = new Date().toLocaleString("id-ID");
-  const avg7      = data.avg7;
-  const avg30     = data.avg30;
-  const streak    = data.streak;
-  const perfect   = data.perfectDays;
+export function generateProgressDashboard(
+  data: ProgressData,
+): ObsidianDashboard {
+  const now = new Date().toLocaleString("id-ID");
+  const avg7 = data.avg7;
+  const avg30 = data.avg30;
+  const streak = data.streak;
+  const perfect = data.perfectDays;
 
   // Heatmap cells (last 30)
   const heatmapRows: string[][] = [];
-  const cells = data.last30.map(p => {
+  const cells = data.last30.map((p) => {
     const pct = p.percent;
     let fill: string;
-    if (pct === 0)        fill = "░░";
-    else if (pct < 30)   fill = "▒░";
-    else if (pct < 60)   fill = "▒▒";
-    else if (pct < 90)   fill = "▓▒";
-    else                 fill = "██";
+    if (pct === 0) fill = "░░";
+    else if (pct < 30) fill = "▒░";
+    else if (pct < 60) fill = "▒▒";
+    else if (pct < 90) fill = "▓▒";
+    else fill = "██";
     return `${fill}`;
   });
 
   // Build 7-day bar chart (text)
-  const bars = data.last7.map(p => {
-    const bar = "█".repeat(Math.round(p.percent / 10)) + "░".repeat(10 - Math.round(p.percent / 10));
+  const bars = data.last7.map((p) => {
+    const bar =
+      "█".repeat(Math.round(p.percent / 10)) +
+      "░".repeat(10 - Math.round(p.percent / 10));
     return `| ${p.dateKey.slice(5)} | ${bar} | ${p.percent}% |`;
   });
 
@@ -282,7 +300,9 @@ export function generateProgressDashboard(data: ProgressData): ObsidianDashboard
     `## 🗓️ 30 Hari Terakhir (Heatmap)`,
     ``,
     `\`\`\``,
-    chunkArray(cells, 6).map(row => row.join(" ")).join("\n"),
+    chunkArray(cells, 6)
+      .map((row) => row.join(" "))
+      .join("\n"),
     `\`\`\``,
     ``,
     `> ░░ = 0% · ▒▒ = 30–60% · ██ = 90–100%`,
@@ -291,8 +311,15 @@ export function generateProgressDashboard(data: ProgressData): ObsidianDashboard
     ``,
     `| Hari | Tanggal | Status |`,
     `|---|---|---|`,
-    ...data.last7.map(p => {
-      const emoji = p.percent >= 80 ? "✅" : p.percent >= 50 ? "⚠️" : p.percent > 0 ? "🟡" : "❌";
+    ...data.last7.map((p) => {
+      const emoji =
+        p.percent >= 80
+          ? "✅"
+          : p.percent >= 50
+            ? "⚠️"
+            : p.percent > 0
+              ? "🟡"
+              : "❌";
       return `| ${p.dateKey} | ${p.percent}% | ${emoji} |`;
     }),
     ``,
@@ -301,7 +328,7 @@ export function generateProgressDashboard(data: ProgressData): ObsidianDashboard
   ].join("\n");
 
   return {
-    filePath: "dashboard/progress.md",
+    filePath: "My Life/dashboard/progress.md",
     content,
   };
 }
