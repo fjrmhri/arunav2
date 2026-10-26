@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
-import { FASTING_SCHEDULE } from "@/data/fitness-seed";
-import { getSkincarePlanForDay } from "@/data/skincare-seed";
-import { getUserPreferences } from "@/lib/firebase";
+import { FASTING_SCHEDULE, SATURDAY_CHEAT_MEAL_PROTOCOL } from "@/data/fitness-seed";
+import { SKINCARE_RULES, getSkincarePlanForDay } from "@/data/skincare-seed";
+import { SLOT_LABEL, SLOT_ORDER, SLOT_TIME } from "@/data/supplement-slots";
+import { getUserPreferences } from "@/lib/storage";
 import {
   getExercisePlanForDate,
   getFastingContext,
@@ -14,7 +15,7 @@ import {
   getSupplementScheduleForDate,
 } from "@/lib/fasting";
 import { addDays, getLocalDateKey, parseLocalDateKey } from "@/lib/date";
-import { cn, getDayTypeLabel } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { DayIndex, UserPreferences } from "@/types";
 
 type PlannerTab = "olahraga" | "nutrisi" | "puasa" | "suplemen" | "skincare";
@@ -31,10 +32,6 @@ function formatMonthLabel(date: Date) {
 }
 
 const DAY_NAMES = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
-const SLOT_LABEL: Record<string, string> = { pagi: "Pagi", siang: "Siang", sore: "Sore", malam: "Malam" };
-const SLOT_TIME: Record<string, string> = {
-  pagi: "07:00–08:30", siang: "12:00–13:00", sore: "16:00–17:00", malam: "21:00–21:30",
-};
 
 const TABS: { key: PlannerTab; label: string }[] = [
   { key: "olahraga", label: "Olahraga" },
@@ -208,6 +205,20 @@ export default function PlannerPage() {
                 </p>
               </div>
             )}
+            {selectedDay === 6 && (
+              <div className="card p-4">
+                <p className="text-xs font-display font-bold mb-2" style={{ color: "var(--text-primary)" }}>
+                  {SATURDAY_CHEAT_MEAL_PROTOCOL.title}
+                </p>
+                <ul className="space-y-1">
+                  {SATURDAY_CHEAT_MEAL_PROTOCOL.rules.map((rule) => (
+                    <li key={rule} className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                      {rule}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {selectedMeal.meals.map((meal, i) => (
               <div key={i} className="card p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -346,7 +357,7 @@ export default function PlannerPage() {
               </p>
             </div>
 
-            {(["pagi", "siang", "sore", "malam"] as const).map((slot) => {
+            {SLOT_ORDER.map((slot) => {
               const slotSupps = selectedSupplementSchedule.supplements.filter((s) => s.timingSlot === slot);
               if (slotSupps.length === 0) return null;
               return (
@@ -453,6 +464,41 @@ export default function PlannerPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Aturan skincare */}
+            <div className="space-y-2">
+              <p className="section-label">Aturan Penting</p>
+              <div className="card p-3">
+                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                  {SKINCARE_RULES.sunscreenReapply.title}
+                </p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  {SKINCARE_RULES.sunscreenReapply.rule} {SKINCARE_RULES.sunscreenReapply.howTo}
+                </p>
+              </div>
+              <div className="card p-3">
+                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                  {SKINCARE_RULES.multiMaskingRule.title}
+                </p>
+                <ul className="mt-0.5 space-y-0.5">
+                  {SKINCARE_RULES.multiMaskingRule.rules.map((rule) => (
+                    <li key={rule} className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                      {rule}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="card p-3">
+                <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                  {SKINCARE_RULES.overExfoliationSignal.title}
+                </p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                  Gejala: {SKINCARE_RULES.overExfoliationSignal.symptoms.join(", ")}.{" "}
+                  {SKINCARE_RULES.overExfoliationSignal.action} Rutinitas washout:{" "}
+                  {SKINCARE_RULES.overExfoliationSignal.washoutRoutine}
+                </p>
               </div>
             </div>
           </div>

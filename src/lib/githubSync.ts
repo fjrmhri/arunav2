@@ -9,11 +9,15 @@ import {
   getCompletionLogsInRange,
   getUserPreferences,
   getStreak,
-} from "@/lib/firebase";
-import { filterValidTaskIds } from "@/lib/completion";
-import { getDateKeysInRange, getLocalDateKey } from "@/lib/date";
-import { getDayIndexFromDateKey, generateTasks } from "@/lib/utils";
+} from "@/lib/storage";
+import { getLocalDateKey } from "@/lib/date";
 import type { ProgressData } from "@/lib/markdownFormatter";
+import {
+  averagePercent,
+  buildProgressSeries,
+  sumCompleted,
+  type ProgressPoint,
+} from "@/lib/progress";
 import { MAX_SYNC_LOGS } from "@/lib/syncValidation";
 
 // ── Config ────────────────────────────────────────────────
@@ -129,36 +133,20 @@ async function buildProgressData(prefs: UserPreferences): Promise<ProgressData> 
     getStreak(today),
   ]);
 
-  const logMap = new Map<string, CompletionLog>(logs.map(l => [l.dateKey, l]));
-
-  const series = getDateKeysInRange(prefs.startDate, today).map(dk => {
-    const dayIdx        = getDayIndexFromDateKey(dk);
-    const validTaskIds  = generateTasks(dayIdx, dk, prefs).map(t => t.id);
-    const totalCount    = validTaskIds.length;
-    const completedCount = filterValidTaskIds(
-      logMap.get(dk)?.completedTaskIds ?? [],
-      validTaskIds,
-    ).length;
-    return {
-      dateKey:        dk,
-      completedCount,
-      percent:        totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
-    };
-  });
-
+  const toPoint = ({ dateKey, completedCount, percent }: ProgressPoint) =>
+    ({ dateKey, completedCount, percent });
+  const series = buildProgressSeries(prefs, logs, today);
   const last7  = series.slice(-7);
   const last30 = series.slice(-30);
-  const avg7   = last7.length  > 0 ? Math.round(last7.reduce((s, p)  => s + p.percent, 0) / last7.length)  : 0;
-  const avg30  = last30.length > 0 ? Math.round(last30.reduce((s, p) => s + p.percent, 0) / last30.length) : 0;
 
   return {
     streak,
-    last7,
-    last30,
-    totalCompletedTasks: series.reduce((s, p) => s + p.completedCount, 0),
+    last7:               last7.map(toPoint),
+    last30:              last30.map(toPoint),
+    totalCompletedTasks: sumCompleted(series),
     perfectDays:         series.filter(p => p.percent === 100).length,
-    avg7,
-    avg30,
+    avg7:                averagePercent(last7),
+    avg30:               averagePercent(last30),
     startDate:           prefs.startDate,
   };
 }

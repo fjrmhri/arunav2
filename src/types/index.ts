@@ -34,9 +34,6 @@ export type SkincarePhase = "stabilitas" | "pencerahan" | "recovery";
 // ---- Level severity untuk safety notes ----
 export type SeverityLevel = "info" | "warning" | "danger" | "unknown";
 
-// ---- Status tugas harian ----
-export type TaskStatus = "pending" | "done" | "skipped";
-
 // ============================================================
 // MASTER PLAN — Data statis dari PDF
 // ============================================================
@@ -149,7 +146,7 @@ export interface SkincareStep {
 }
 
 // ============================================================
-// DAILY TASKS — Dihasilkan dari master plan
+// DAILY TASKS — Dihasilkan dari master plan (lib/utils.ts#generateTasks)
 // ============================================================
 
 export interface DailyTask {
@@ -157,13 +154,10 @@ export interface DailyTask {
   category: TaskCategory;
   label: string;
   detail?: string;
-  status: TaskStatus;
-  dayIndex: DayIndex;
-  dateKey: string; // "YYYY-MM-DD"
 }
 
 // ============================================================
-// COMPLETION LOGS — Tersimpan di Firestore / localStorage
+// COMPLETION LOGS — Tersimpan di localStorage
 // ============================================================
 
 export interface CompletionLog {
@@ -203,56 +197,6 @@ export interface UserPreferences {
   isOutdoor: boolean; // trigger reapply sunscreen
   lastFastStartDate?: string;
   notificationsEnabled: boolean;
-}
-
-// ============================================================
-// DASHBOARD STATE
-// ============================================================
-
-export interface TodayState {
-  dateKey: string;
-  dayIndex: DayIndex;
-  dayName: string;
-  dayType: DayType;
-  exerciseDay: ExerciseDay;
-  mealPlan: MealPlan;
-  supplementSchedule: SupplementSchedule;
-  skincareDay: SkincareDay;
-  fastingStatus: FastingStatus | null;
-  completionLog: CompletionLog;
-  progressPercent: number;
-  streakCount: number;
-}
-
-export interface FastingStatus {
-  isActive: boolean;
-  phase: FastingPhase | null;
-  hourElapsed: number;
-  hourRemaining: number;
-  percentComplete: number;
-  currentPhaseTitle: string;
-}
-
-// ============================================================
-// WEEKLY OVERVIEW
-// ============================================================
-
-export interface WeeklyOverview {
-  weekStartDate: string;
-  days: WeekDaySummary[];
-  overallCompletionPercent: number;
-  streakCount: number;
-}
-
-export interface WeekDaySummary {
-  dayIndex: DayIndex;
-  dateKey: string;
-  dayName: string;
-  dayType: DayType;
-  completionPercent: number;
-  isToday: boolean;
-  isPast: boolean;
-  isFuture: boolean;
 }
 
 // ============================================================

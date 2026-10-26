@@ -104,9 +104,21 @@ Endpoint `POST /api/sync-obsidian` hanya menerima request dengan header `Authori
 2. Isi `SYNC_SECRET`, `GITHUB_TOKEN` (fine-grained, akses Contents: Read and write hanya ke repo vault), dan `GITHUB_OBSIDIAN_REPO` di Vercel > Settings > Environment Variables, lalu redeploy.
 3. Isi secret yang sama di halaman Pengaturan aplikasi, lalu tekan `Sync sekarang`.
 
+## Push Notification (FCM)
+
+- Aktifkan Reminder di dashboard untuk mendaftarkan perangkat (butuh `NEXT_PUBLIC_FCM_VAPID_KEY`).
+- Token perangkat bisa disalin dari halaman Pengaturan, lalu dipakai `node scripts/send-push.js <TOKEN>` (butuh `firebase-admin` dan service account, lihat komentar di skrip).
+- Pesan FCM yang masuk saat app terbuka ditampilkan sebagai notifikasi lokal.
+
+## Keamanan
+
+- Header keamanan diatur di `next.config.js` (`X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`).
+- CSP masih `Content-Security-Policy-Report-Only`: pelanggaran hanya muncul di console browser. Ganti ke `Content-Security-Policy` setelah console bersih.
+- Halaman diberi `robots: noindex, nofollow`.
+
 ## Deploy
 
-Proyek dideploy ke Vercel. Push ke GitHub memicu deploy otomatis.
+Proyek dideploy ke Vercel. Push ke GitHub memicu deploy otomatis. CI (GitHub Actions) menjalankan lint, typecheck, test, dan build di setiap pull request.
 
 ## Install di Mobile
 

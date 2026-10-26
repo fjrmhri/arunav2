@@ -4,7 +4,7 @@
 
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { DayIndex, DayType, FastingPhase, UserPreferences } from "@/types";
+import type { DailyTask, DayIndex, DayType, UserPreferences } from "@/types";
 import { getSkincarePlanForDay } from "@/data/skincare-seed";
 import { getLocalDateKey, parseLocalDateKey } from "@/lib/date";
 import {
@@ -48,67 +48,9 @@ export function formatShortDate(dateStr: string): string {
   });
 }
 
-export function getDayOfWeek(dateStr: string): number {
-  return parseLocalDateKey(dateStr).getDay();
-}
-
 export function getDayIndexFromDateKey(dateStr: string): DayIndex {
   const weekday = parseLocalDateKey(dateStr).getDay();
   return (weekday === 0 ? 7 : weekday) as DayIndex;
-}
-
-export function calendarDayToCycleDay(
-  dateStr: string,
-  _startDate: string,
-): DayIndex {
-  return getDayIndexFromDateKey(dateStr);
-}
-
-export const HARI_ID = [
-  "Minggu",
-  "Senin",
-  "Selasa",
-  "Rabu",
-  "Kamis",
-  "Jumat",
-  "Sabtu",
-];
-
-export function getNamaHari(dateStr: string): string {
-  return HARI_ID[parseLocalDateKey(dateStr).getDay()];
-}
-
-export function getDayTypeColor(_type: DayType): string {
-  // All grayscale in new design system
-  return "text-gray-200";
-}
-
-export function getDayTypeBg(_type: DayType): string {
-  // All use card style — border only differentiates
-  return "bg-[#111111] border-[#222222]";
-}
-
-export function getDayTypeIcon(type: DayType): string {
-  switch (type) {
-    case "workout_lower":
-      return "🦵";
-    case "workout_push":
-      return "💪";
-    case "workout_hiit":
-      return "⚡";
-    case "workout_pull":
-      return "🏋️";
-    case "workout_fullbody":
-      return "🔥";
-    case "active_recovery":
-      return "🌿";
-    case "rest_fasting":
-      return "🌙";
-    case "fasting_active":
-      return "⏳";
-    default:
-      return "📅";
-  }
 }
 
 export function getDayTypeLabel(type: DayType): string {
@@ -134,37 +76,12 @@ export function getDayTypeLabel(type: DayType): string {
   }
 }
 
-export function getFastingStatus(now: Date): {
-  isActive: boolean;
-  phase: FastingPhase | null;
-  hourElapsed: number;
-  percentComplete: number;
-} {
-  const context = getFastingContext(getLocalDateKey(now), null, now);
-
-  if (!context.isActiveFastingWindow) {
-    return { isActive: false, phase: null, hourElapsed: 0, percentComplete: 0 };
-  }
-
-  return {
-    isActive: true,
-    phase: context.phase,
-    hourElapsed: context.hourElapsed,
-    percentComplete: context.percentComplete,
-  };
-}
-
 export function generateTasks(
   dayIndex: DayIndex,
   dateKey: string,
   prefs?: Pick<UserPreferences, "startDate" | "lastFastStartDate"> | null,
-) {
-  const tasks: Array<{
-    id: string;
-    category: string;
-    label: string;
-    detail?: string;
-  }> = [];
+): DailyTask[] {
+  const tasks: DailyTask[] = [];
   const exercise = getExercisePlanForDate(dayIndex, dateKey, prefs);
   const mealPlan = getMealPlanForDate(dayIndex, dateKey, prefs);
   const supplementSchedule = getSupplementScheduleForDate(dayIndex, dateKey, prefs);
@@ -281,11 +198,6 @@ export function getLegacyTaskIdMap(
   );
 
   return map;
-}
-
-export function getSeverityColor(_severity: "info" | "warning" | "danger" | "unknown") {
-  // All cards use base card style — color expressed only via icon/text in SafetyCard
-  return "bg-[#111111] border-[#222222] text-[#eeeeee]";
 }
 
 export function getTagBadge(tag?: "UNKNOWN" | "ASSUMPTION" | "CONFLICT" | "WARNING" | "DANGER") {

@@ -8,6 +8,13 @@ interface FastingCardProps {
   fastingContext: FastingContext | null;
 }
 
+function formatCountdown(target: Date): string {
+  const minutes = Math.max(0, Math.round((target.getTime() - Date.now()) / 60000));
+  if (minutes === 0) return "Mulai sekarang";
+  const hours = Math.floor(minutes / 60);
+  return hours > 0 ? `Mulai ${hours}j ${minutes % 60}m lagi` : `Mulai ${minutes}m lagi`;
+}
+
 export default function FastingCard({ fastingContext }: FastingCardProps) {
   if (!fastingContext) return null;
 
@@ -47,7 +54,9 @@ export default function FastingCard({ fastingContext }: FastingCardProps) {
             <p className="section-label">{title}</p>
           </div>
           <span className="text-[11px] font-bold" style={{ color: "var(--text-primary)" }}>
-            {fastingContext.hourElapsed}j / 36j
+            {fastingContext.isFastStartDay
+              ? formatCountdown(fastingContext.currentFast.startAt)
+              : "Selesai"}
           </span>
         </div>
         <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{detail}</p>

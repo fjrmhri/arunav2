@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { Messaging } from "@firebase/messaging";
-import { getFirebaseApp, isFcmConfigured } from "@/lib/firebase-app";
+import { getFirebaseApp, isFirebaseConfigured } from "@/lib/firebase-app";
 
 const FCM_TOKEN_KEY   = "arunav2_fcm_token";
 const VAPID_KEY       = process.env.NEXT_PUBLIC_FCM_VAPID_KEY ?? "";
@@ -13,7 +13,7 @@ const VAPID_KEY       = process.env.NEXT_PUBLIC_FCM_VAPID_KEY ?? "";
 let _messagingInstance: Messaging | null = null;
 
 async function getMessagingInstance(): Promise<Messaging | null> {
-  if (!isFcmConfigured() || typeof window === "undefined") return null;
+  if (!isFirebaseConfigured() || typeof window === "undefined") return null;
   if (_messagingInstance) return _messagingInstance;
 
   const app = await getFirebaseApp();
@@ -39,7 +39,7 @@ export async function requestFcmToken(): Promise<string | null> {
     console.warn("[FCM] VAPID key belum diisi di .env.local");
     return null;
   }
-  if (!isFcmConfigured()) return null;
+  if (!isFirebaseConfigured()) return null;
   if (typeof window === "undefined") return null;
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
 
@@ -87,10 +87,10 @@ export function getStoredFcmToken(): string | null {
  */
 export async function setupForegroundMessageHandler(
   onMsg: (payload: unknown) => void,
-): Promise<void> {
+): Promise<() => void> {
   const messaging = await getMessagingInstance();
-  if (!messaging) return;
+  if (!messaging) return () => {};
 
   const { onMessage } = await import("@firebase/messaging");
-  onMessage(messaging, onMsg);
+  return onMessage(messaging, onMsg);
 }

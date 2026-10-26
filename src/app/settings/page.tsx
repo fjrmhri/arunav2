@@ -8,10 +8,11 @@ import {
   getUserPreferences,
   importBackup,
   saveUserPreferences,
-} from "@/lib/firebase";
+} from "@/lib/storage";
 import { getFastingContext } from "@/lib/fasting";
 import { flushSyncQueue, getSyncSecret, setSyncSecret, type SyncResult } from "@/lib/githubSync";
 import { isValidDateKey } from "@/lib/syncValidation";
+import { getStoredFcmToken } from "@/lib/fcm";
 import { getLocalDateKey } from "@/lib/date";
 import { formatShortDate } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const [secret, setSecret] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +48,7 @@ export default function SettingsPage() {
       setStartDate(prefs.startDate);
       setLastFastStartDate(prefs.lastFastStartDate ?? "");
       setSecret(getSyncSecret());
+      setFcmToken(getStoredFcmToken());
       setLoading(false);
     };
     void load();
@@ -102,6 +105,16 @@ export default function SettingsPage() {
       setStatus(`Backup dipulihkan (${count} hari).`);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Impor gagal.");
+    }
+  };
+
+  const handleCopyToken = async () => {
+    if (!fcmToken) return;
+    try {
+      await navigator.clipboard.writeText(fcmToken);
+      setStatus("Token FCM disalin.");
+    } catch {
+      setStatus("Gagal menyalin token.");
     }
   };
 
@@ -206,6 +219,25 @@ export default function SettingsPage() {
           >
             {syncing ? "Menyinkronkan..." : "Sync sekarang"}
           </button>
+        </div>
+
+        {/* Push FCM */}
+        <div className="card p-4 space-y-3">
+          <p className="section-label">Push Notification (FCM)</p>
+          <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            {fcmToken
+              ? "Perangkat ini sudah terdaftar. Token dipakai untuk mengirim push (scripts/send-push.js)."
+              : "Belum terdaftar. Aktifkan Reminder di dashboard untuk mendaftarkan perangkat ini."}
+          </p>
+          {fcmToken && (
+            <button
+              onClick={handleCopyToken}
+              className="w-full rounded-xl py-3 text-xs font-display font-semibold"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            >
+              Salin token FCM
+            </button>
+          )}
         </div>
 
         {/* Backup */}

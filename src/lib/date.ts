@@ -61,10 +61,6 @@ export function getDateKeysInRange(
   return keys;
 }
 
-export function isSameLocalDate(left: Date, right: Date): boolean {
-  return getLocalDateKey(left) === getLocalDateKey(right);
-}
-
 export function getMonthDateRange(date: Date = new Date()) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);

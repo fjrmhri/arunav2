@@ -15,7 +15,7 @@ export const firebaseClientConfig = {
 } as const;
 
 /** True jika semua env vars Firebase sudah diisi (bukan placeholder). */
-export function isFcmConfigured(): boolean {
+export function isFirebaseConfigured(): boolean {
   const { apiKey, messagingSenderId, projectId } = firebaseClientConfig;
   return !!(
     apiKey &&
@@ -30,7 +30,7 @@ let _cachedApp: FirebaseApp | null = null;
 
 /** Mengembalikan Firebase App instance (singleton). Null jika tidak dikonfigurasi. */
 export async function getFirebaseApp(): Promise<FirebaseApp | null> {
-  if (!isFcmConfigured()) return null;
+  if (!isFirebaseConfigured()) return null;
   if (_cachedApp) return _cachedApp;
 
   try {

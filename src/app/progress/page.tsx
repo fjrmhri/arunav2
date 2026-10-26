@@ -3,18 +3,16 @@
 import { useEffect, useState } from "react";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
-import { getCompletionLogsInRange, getStreak, getUserPreferences } from "@/lib/firebase";
-import { filterValidTaskIds } from "@/lib/completion";
-import { getDateKeysInRange, getLocalDateKey } from "@/lib/date";
-import { calendarDayToCycleDay, formatShortDate, generateTasks } from "@/lib/utils";
-import type { CompletionLog, UserPreferences } from "@/types";
-
-type ProgressPoint = {
-  dateKey: string;
-  completionPercent: number;
-  completedCount: number;
-  totalCount: number;
-};
+import { getCompletionLogsInRange, getStreak, getUserPreferences } from "@/lib/storage";
+import { getLocalDateKey } from "@/lib/date";
+import { formatShortDate } from "@/lib/utils";
+import {
+  averagePercent,
+  buildProgressSeries,
+  sumCompleted,
+  type ProgressPoint,
+} from "@/lib/progress";
+import type { UserPreferences } from "@/types";
 
 type ProgressSummary = {
   prefs: UserPreferences;
@@ -29,14 +27,6 @@ type ProgressSummary = {
   recoveryDays: number;
   strongDays7: number;
 };
-
-function average(values: number[]) {
-  if (values.length === 0) return 0;
-  return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
-}
-function sum(values: number[]) {
-  return values.reduce((t, v) => t + v, 0);
-}
 
 export default function ProgressPage() {
   const [summary, setSummary] = useState<ProgressSummary | null>(null);
@@ -53,37 +43,21 @@ export default function ProgressPage() {
           getStreak(today),
         ]);
 
-        const logMap = new Map<string, CompletionLog>(logs.map((l) => [l.dateKey, l]));
-        const series = getDateKeysInRange(prefs.startDate, today).map((dateKey) => {
-          const dayIndex = calendarDayToCycleDay(dateKey, prefs.startDate);
-          const validTaskIds = generateTasks(dayIndex, dateKey, prefs).map((t) => t.id);
-          const totalCount = validTaskIds.length;
-          const completedCount = filterValidTaskIds(
-            logMap.get(dateKey)?.completedTaskIds ?? [],
-            validTaskIds,
-          ).length;
-          return {
-            dateKey,
-            completionPercent: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
-            completedCount,
-            totalCount,
-          };
-        });
-
+        const series = buildProgressSeries(prefs, logs, today);
         const last7 = series.slice(-7);
         const last30 = series.slice(-30);
         const recoveryDays = series.filter(
           (p, i) => i > 0 && p.completedCount > 0 && series[i - 1].completedCount === 0
         ).length;
-        const strongDays7 = last7.filter((p) => p.completionPercent >= 70).length;
+        const strongDays7 = last7.filter((p) => p.percent >= 70).length;
 
         setSummary({
           prefs, streak,
-          avg7: average(last7.map((p) => p.completionPercent)),
-          avg30: average(last30.map((p) => p.completionPercent)),
-          perfectDays: series.filter((p) => p.completionPercent === 100).length,
-          totalCompleted7: sum(last7.map((p) => p.completedCount)),
-          totalCompleted30: sum(last30.map((p) => p.completedCount)),
+          avg7: averagePercent(last7),
+          avg30: averagePercent(last30),
+          perfectDays: series.filter((p) => p.percent === 100).length,
+          totalCompleted7: sumCompleted(last7),
+          totalCompleted30: sumCompleted(last30),
           last7, last30, recoveryDays, strongDays7,
         });
       } catch (e) {
@@ -189,20 +163,20 @@ export default function ProgressPage() {
           {/* Bar chart — clean bars, no gradient */}
           <div className="flex items-end gap-1.5 h-32">
             {summary.last7.map((point) => {
-              const h = Math.max(4, Math.round((point.completionPercent / 100) * 112));
+              const h = Math.max(4, Math.round((point.percent / 100) * 112));
               return (
                 <div key={point.dateKey} className="flex-1 flex flex-col items-center gap-1.5">
                   <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
-                    {point.completionPercent > 0 ? `${point.completionPercent}%` : ""}
+                    {point.percent > 0 ? `${point.percent}%` : ""}
                   </span>
                   <div className="w-full flex items-end" style={{ height: "112px" }}>
                     <div
                       className="w-full rounded-sm transition-all duration-700"
                       style={{
                         height: `${h}px`,
-                        background: point.completionPercent === 100
+                        background: point.percent === 100
                           ? "var(--text-primary)"
-                          : point.completionPercent >= 70
+                          : point.percent >= 70
                           ? "#888"
                           : "var(--bg-elevated)",
                         border: "1px solid var(--border)",
@@ -236,15 +210,15 @@ export default function ProgressPage() {
           {/* Heatmap grid — 6×5 */}
           <div className="grid grid-cols-6 gap-1.5">
             {summary.last30.map((point) => {
-              const opacity = point.completionPercent === 0
+              const opacity = point.percent === 0
                 ? 0.08
-                : point.completionPercent === 100
+                : point.percent === 100
                 ? 1
-                : 0.2 + (point.completionPercent / 100) * 0.75;
+                : 0.2 + (point.percent / 100) * 0.75;
               return (
                 <div
                   key={point.dateKey}
-                  title={`${formatShortDate(point.dateKey)}: ${point.completionPercent}%`}
+                  title={`${formatShortDate(point.dateKey)}: ${point.percent}%`}
                   className="aspect-square rounded"
                   style={{ background: `rgba(238,238,238,${opacity})` }}
                 />

@@ -27,7 +27,7 @@ describe("getUserPreferences", () => {
   });
 
   it("menyimpan startDate saat pertama kali dan tidak bergeser di hari berikutnya", async () => {
-    const { getUserPreferences } = await import("@/lib/firebase");
+    const { getUserPreferences } = await import("@/lib/storage");
 
     vi.setSystemTime(new Date(2026, 9, 26, 9, 0));
     const first = await getUserPreferences();
@@ -40,7 +40,7 @@ describe("getUserPreferences", () => {
   });
 
   it("saveUserPreferences menggabungkan dan bisa mengosongkan lastFastStartDate", async () => {
-    const { getUserPreferences, saveUserPreferences } = await import("@/lib/firebase");
+    const { getUserPreferences, saveUserPreferences } = await import("@/lib/storage");
 
     await saveUserPreferences({ lastFastStartDate: "2026-11-08" });
     expect((await getUserPreferences()).lastFastStartDate).toBe("2026-11-08");
@@ -50,7 +50,7 @@ describe("getUserPreferences", () => {
   });
 
   it("entri rusak tidak membuat pembacaan crash", async () => {
-    const { getCompletionLog, getCompletionLogsInRange } = await import("@/lib/firebase");
+    const { getCompletionLog, getCompletionLogsInRange } = await import("@/lib/storage");
     localStorage.setItem("log_2026-10-26", "{bukan json");
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -60,7 +60,7 @@ describe("getUserPreferences", () => {
 
   it("ekspor lalu impor backup mengembalikan data yang sama", async () => {
     const { exportBackup, importBackup, getCompletionLog, saveCompletionLog, saveUserPreferences } =
-      await import("@/lib/firebase");
+      await import("@/lib/storage");
     const log = {
       dateKey: "2026-10-27",
       completedTaskIds: ["2026-10-27_hydration"],
@@ -81,7 +81,7 @@ describe("getUserPreferences", () => {
   });
 
   it("impor menolak file yang bukan backup arunav2", async () => {
-    const { importBackup } = await import("@/lib/firebase");
+    const { importBackup } = await import("@/lib/storage");
     await expect(importBackup({ foo: 1 })).rejects.toThrow();
   });
 });
