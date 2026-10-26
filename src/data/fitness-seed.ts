@@ -12,8 +12,10 @@ import type {
   DayIndex,
 } from "@/types";
 import { FINAL_SUPPLEMENT_SLOTS } from "@/data/final-schedule";
+import { slugify } from "@/lib/taskIds";
 
 export type Supplement = {
+  key: string;
   name: string;
   dose: string;
   timing: string;
@@ -153,6 +155,8 @@ export const MEAL_PLANS: MealPlan[] = ([1, 2, 3, 4, 5, 6] as DayIndex[]).map((da
 }));
 
 export const SUPPLEMENTS_BASE: Supplement[] = FINAL_SUPPLEMENT_SLOTS.map((slot) => ({
+  // Key stabil dari slot asli; tetap sama walau jadwal digeser saat puasa/refeed
+  key: `${slugify(slot.nama)}-${slot.waktu}`,
   name: slot.nama,
   dose: slot.dosis,
   timing: `${slot.rentangWaktu} — ${slot.instruksi}`,

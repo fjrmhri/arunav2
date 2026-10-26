@@ -3,7 +3,7 @@
 // Lazy-init: hanya aktif jika env vars Firebase diisi.
 // ============================================================
 
-import type { FirebaseApp } from "firebase/app";
+import type { FirebaseApp } from "@firebase/app";
 
 export const firebaseClientConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY            ?? "",
@@ -34,7 +34,7 @@ export async function getFirebaseApp(): Promise<FirebaseApp | null> {
   if (_cachedApp) return _cachedApp;
 
   try {
-    const { initializeApp, getApps, getApp } = await import("firebase/app");
+    const { initializeApp, getApps, getApp } = await import("@firebase/app");
     _cachedApp = getApps().length > 0 ? getApp() : initializeApp(firebaseClientConfig);
     return _cachedApp;
   } catch (err) {

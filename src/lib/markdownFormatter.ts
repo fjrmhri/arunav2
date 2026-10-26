@@ -11,8 +11,15 @@ import {
   getMealPlanForDate,
   getSupplementScheduleForDate,
   getFastingContext,
+  isSupplementHeldForRefeed,
 } from "@/lib/fasting";
 import { getSkincarePlanForDay } from "@/data/skincare-seed";
+import {
+  exerciseTaskIds,
+  mealTaskIds,
+  skinPmTaskIds,
+  supplementTaskIds,
+} from "@/lib/taskIds";
 import type { UserPreferences } from "@/types";
 
 export interface ObsidianDailyNote {
@@ -39,7 +46,7 @@ function formatDateId(dateKey: string): string {
 }
 
 function parseCategoryFromId(taskId: string) {
-  // ${dateKey}_ex_main | _ex_0 | _meal_0 | _supp_0 | _skin_am | _skin_pm_0 | _hydration | _fasting
+  // Format ID: lihat src/lib/taskIds.ts
   const parts = taskId.split("_");
   if (parts.includes("ex")) return "exercise";
   if (parts.includes("meal")) return "nutrition";
@@ -66,7 +73,6 @@ export function generateDailyNote(
   const dayLabel = getDayTypeLabel(exercise.type);
 
   const completed = new Set(log.completedTaskIds);
-  const totalTasks = log.completedTaskIds.length + log.skippedTaskIds.length; // approximate
 
   // ── Count by category ─────────────────────────────────
   const doneByCategory: Record<string, string[]> = {};
@@ -89,8 +95,9 @@ export function generateDailyNote(
   if (exercise.exercises.length > 0) {
     exerciseSection = `\n## 🏋️ Latihan — ${exercise.label}\n\n`;
     exerciseSection += `> Durasi: ${exercise.duration}\n\n`;
-    for (const ex of exercise.exercises) {
-      const id = `${dateKey}_ex_${exercise.exercises.indexOf(ex)}`;
+    const exerciseIds = exerciseTaskIds(dateKey, exercise.exercises);
+    for (const [i, ex] of exercise.exercises.entries()) {
+      const id = exerciseIds[i];
       const check = completed.has(id) ? "x" : " ";
       const meta = [
         ex.sets ? `${ex.sets} set` : "",
@@ -113,8 +120,9 @@ export function generateDailyNote(
     nutritionSection = `\n## 🍽️ Nutrisi — Puasa Aktif\n\n> Tidak ada asupan kalori hari ini.\n`;
   } else {
     nutritionSection = `\n## 🍽️ Nutrisi\n\n`;
+    const mealIds = mealTaskIds(dateKey, mealPlan.meals);
     mealPlan.meals.forEach((meal, i) => {
-      const id = `${dateKey}_meal_${i}`;
+      const id = mealIds[i];
       const check = completed.has(id) ? "x" : " ";
       nutritionSection += `### ${meal.label} (${meal.time})\n`;
       nutritionSection += `- [${check}] **${meal.label}** selesai\n`;
@@ -129,23 +137,26 @@ export function generateDailyNote(
 
   // ── Supplement section ───────────────────────────────
   let suppSection = `\n## 💊 Suplemen\n\n`;
+  const actionableSupps = fastCtx.isStrictFastDay
+    ? suppSched.supplements.filter((supp) => !isSupplementHeldForRefeed(supp))
+    : suppSched.supplements;
   if (fastCtx.isStrictFastDay) {
-    suppSection += "> Suplemen berkalori ditunda ke refeeding besok.\n";
-  } else {
-    suppSched.supplements.forEach((supp, i) => {
-      const id = `${dateKey}_supp_${i}`;
-      const check = completed.has(id) ? "x" : " ";
-      suppSection += `- [${check}] **${supp.name}** ${supp.dose} — ${supp.timeRange}\n`;
-    });
+    suppSection += "> Suplemen berkalori ditunda ke refeeding besok.\n\n";
   }
+  const suppIds = supplementTaskIds(dateKey, actionableSupps);
+  actionableSupps.forEach((supp, i) => {
+    const check = completed.has(suppIds[i]) ? "x" : " ";
+    suppSection += `- [${check}] **${supp.name}** ${supp.dose} — ${supp.timeRange}\n`;
+  });
 
   // ── Skincare section ─────────────────────────────────
   let skincareSection = `\n## 🧴 Skincare — ${skincare.dayName} (${skincare.pmLabel})\n\n`;
   const skinAmId = `${dateKey}_skin_am`;
   const skinAmCheck = completed.has(skinAmId) ? "x" : " ";
   skincareSection += `- [${skinAmCheck}] **Pagi** — ${skincare.amRoutine.map((s) => s.productShort).join(" → ")}\n`;
+  const skinPmIds = skinPmTaskIds(dateKey, skincare.pmRoutine);
   skincare.pmRoutine.forEach((step, i) => {
-    const id = `${dateKey}_skin_pm_${i}`;
+    const id = skinPmIds[i];
     const check = completed.has(id) ? "x" : " ";
     skincareSection += `- [${check}] **Malam** — ${step.productShort}${step.notes ? ` _(${step.notes})_` : ""}\n`;
   });

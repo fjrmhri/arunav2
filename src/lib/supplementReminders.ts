@@ -1,6 +1,9 @@
 import type { Supplement } from "@/types";
 import type { FastingContext } from "@/lib/fasting";
-import { FASTING_REFEED_SUPPLEMENT_TIME } from "@/lib/fasting";
+import {
+  FASTING_REFEED_SUPPLEMENT_TIME,
+  isSupplementHeldForRefeed as isShiftedToRefeed,
+} from "@/lib/fasting";
 import { combineDateKeyAndTime, getLocalDateKey } from "@/lib/date";
 
 const REMINDER_OFFSET_MS = 5 * 60 * 1000;
@@ -15,13 +18,6 @@ export type SupplementReminderSlot = {
   body: string;
   items: string[];
 };
-
-function isShiftedToRefeed(supplement: Supplement) {
-  return (
-    !supplement.name.includes("Creatine") &&
-    !supplement.name.includes("Magnesium")
-  );
-}
 
 function resolveScheduledDateTime(
   dateKey: string,

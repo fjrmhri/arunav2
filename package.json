@@ -11,10 +11,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@firebase/app": "^0.16.2",
+    "@firebase/messaging": "^0.13.3",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
-    "firebase": "^12.12.0",
-    "lucide-react": "^0.400.0",
+    "lucide-react": "^1.61.0",
     "next": "^15.5.28",
     "react": "^18",
     "react-dom": "^18",

@@ -294,6 +294,7 @@ export default function AppActionsCard({
   return (
     <div className="card p-4">
       <button
+        aria-expanded={isReminderExpanded}
         onClick={() => setIsReminderExpanded(!isReminderExpanded)}
         className="w-full flex items-center justify-between hover:opacity-70 transition-opacity"
         style={{ marginBottom: isReminderExpanded ? "12px" : "0" }}
@@ -345,7 +346,7 @@ export default function AppActionsCard({
                 ? nextReminderLabel
                   ? `Berikutnya: ${nextReminderLabel}`
                   : "Tidak ada reminder tersisa hari ini."
-                : "Notifikasi 5 menit sebelum jadwal, plus catch-up saat app dibuka kembali."}
+                : "Notifikasi 5 menit sebelum jadwal saat app terbuka, plus catch-up saat app dibuka kembali."}
           </p>
         </button>
       )}

@@ -23,6 +23,8 @@ export default function ExerciseCard({ exercise }: ExerciseCardProps) {
         </div>
         {!isRest && (
           <button
+            aria-label={expanded ? "Tutup detail latihan" : "Lihat detail latihan"}
+            aria-expanded={expanded}
             onClick={() => setExpanded(!expanded)}
             className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ background: "var(--bg-elevated)" }}

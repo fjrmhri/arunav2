@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getCompletionLog,
   saveCompletionLog,
   getUserPreferences,
+  saveUserPreferences,
   getStreak,
 } from "@/lib/firebase";
 import { todayKey, generateTasks, getDayIndexFromDateKey } from "@/lib/utils";
@@ -16,16 +17,19 @@ import {
   getMealPlanForDate,
   getSupplementScheduleForDate,
 } from "@/lib/fasting";
-import {
-  hasCompletionLogTaskMismatch,
-  sanitizeCompletionLog,
-} from "@/lib/completion";
+import { sanitizeCompletionLog } from "@/lib/completion";
 // ── Obsidian sync ────────────────────────────────────────
 import { enqueueSyncForDate, startSyncScheduler } from "@/lib/githubSync";
 import type { DayIndex, CompletionLog, UserPreferences } from "@/types";
 
+function msUntilNextMidnight(): number {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+  return next.getTime() - now.getTime();
+}
+
 export function useTracker() {
-  const [dateKey] = useState(todayKey);
+  const [dateKey, setDateKey] = useState(todayKey);
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [log, setLog] = useState<CompletionLog | null>(null);
   const [streak, setStreak] = useState(0);
@@ -38,26 +42,64 @@ export function useTracker() {
   const fastingContext = prefs
     ? getFastingContext(dateKey, prefs, new Date())
     : null;
-  const exercise = getExercisePlanForDate(dayIndex, dateKey, prefs);
-  const mealPlan = getMealPlanForDate(dayIndex, dateKey, prefs);
-  const supplementSchedule = getSupplementScheduleForDate(
-    dayIndex,
-    dateKey,
-    prefs,
+  const exercise = useMemo(
+    () => getExercisePlanForDate(dayIndex, dateKey, prefs),
+    [dayIndex, dateKey, prefs],
+  );
+  const mealPlan = useMemo(
+    () => getMealPlanForDate(dayIndex, dateKey, prefs),
+    [dayIndex, dateKey, prefs],
+  );
+  const supplementSchedule = useMemo(
+    () => getSupplementScheduleForDate(dayIndex, dateKey, prefs),
+    [dayIndex, dateKey, prefs],
   );
 
-  const allTasks = generateTasks(dayIndex, dateKey, prefs);
-  const allTaskIds = allTasks.map((t) => t.id);
+  const allTasks = useMemo(
+    () => generateTasks(dayIndex, dateKey, prefs),
+    [dayIndex, dateKey, prefs],
+  );
+  const allTaskIds = useMemo(() => allTasks.map((t) => t.id), [allTasks]);
 
   const isFastingDay = !!fastingContext?.isFastingDay;
   const isFastingPrepDay = !!fastingContext?.isFastStartDay;
 
-  const sanitizedLog = log ? sanitizeCompletionLog(log, allTaskIds) : null;
+  // Log tersimpan tidak pernah dibersihkan otomatis; ID yang tidak cocok dengan
+  // rencana hari ini hanya disaring untuk tampilan dan perhitungan progress.
+  const sanitizedLog = useMemo(
+    () => (log ? sanitizeCompletionLog(log, allTaskIds) : null),
+    [log, allTaskIds],
+  );
   const completedIds = sanitizedLog?.completedTaskIds ?? [];
   const progressPercent =
     allTaskIds.length > 0
       ? Math.round((completedIds.length / allTaskIds.length) * 100)
       : 0;
+
+  // ── Pergantian hari saat app tetap terbuka ────────────
+  useEffect(() => {
+    const refreshDate = () => {
+      const current = todayKey();
+      setDateKey((prev) => (prev === current ? prev : current));
+    };
+
+    let timer = window.setTimeout(function tick() {
+      refreshDate();
+      timer = window.setTimeout(tick, msUntilNextMidnight());
+    }, msUntilNextMidnight());
+
+    const handleVisibility = () => {
+      if (!document.hidden) refreshDate();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", refreshDate);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", refreshDate);
+    };
+  }, []);
 
   // ── Load data ─────────────────────────────────────────
   useEffect(() => {
@@ -89,16 +131,6 @@ export function useTracker() {
     void load();
   }, [dateKey]);
 
-  // ── Sanitize stale task IDs ───────────────────────────
-  useEffect(() => {
-    if (!log || allTaskIds.length === 0) return;
-    if (!hasCompletionLogTaskMismatch(log, allTaskIds)) return;
-
-    const cleanedLog = sanitizeCompletionLog(log, allTaskIds);
-    setLog(cleanedLog);
-    void saveCompletionLog(dateKey, cleanedLog);
-  }, [log, allTaskIds, dateKey]);
-
   // ── Start Obsidian sync scheduler (once) ─────────────
   useEffect(() => {
     const stop = startSyncScheduler();
@@ -106,65 +138,52 @@ export function useTracker() {
   }, []);
 
   // ── Actions ───────────────────────────────────────────
-  const toggleTask = useCallback(
-    async (taskId: string) => {
-      if (!sanitizedLog) return;
-
-      const isCompleted = sanitizedLog.completedTaskIds.includes(taskId);
-      const newCompleted = isCompleted
-        ? sanitizedLog.completedTaskIds.filter((id) => id !== taskId)
-        : [...sanitizedLog.completedTaskIds, taskId];
-
-      const newLog: CompletionLog = {
-        ...sanitizedLog,
-        completedTaskIds: newCompleted,
-        lastUpdated: Date.now(),
-      };
-
+  const persistLog = useCallback(
+    async (newLog: CompletionLog) => {
       setLog(newLog);
       await saveCompletionLog(dateKey, newLog);
-
-      // Enqueue Obsidian sync setelah task berubah
+      // Enqueue Obsidian sync setelah log berubah
       enqueueSyncForDate(dateKey);
     },
-    [sanitizedLog, dateKey],
+    [dateKey],
+  );
+
+  const currentLog = log && log.dateKey === dateKey ? log : null;
+
+  const toggleTask = useCallback(
+    async (taskId: string) => {
+      if (!currentLog) return;
+
+      const isCompleted = currentLog.completedTaskIds.includes(taskId);
+      const newCompleted = isCompleted
+        ? currentLog.completedTaskIds.filter((id) => id !== taskId)
+        : [...currentLog.completedTaskIds, taskId];
+
+      await persistLog({ ...currentLog, completedTaskIds: newCompleted, lastUpdated: Date.now() });
+    },
+    [currentLog, persistLog],
   );
 
   const updateNotes = useCallback(
     async (notes: string) => {
-      if (!sanitizedLog) return;
-      const newLog: CompletionLog = {
-        ...sanitizedLog,
-        notes,
-        lastUpdated: Date.now(),
-      };
-      setLog(newLog);
-      await saveCompletionLog(dateKey, newLog);
-      enqueueSyncForDate(dateKey);
+      if (!currentLog) return;
+      await persistLog({ ...currentLog, notes, lastUpdated: Date.now() });
     },
-    [sanitizedLog, dateKey],
+    [currentLog, persistLog],
   );
 
   const updateSkinReaction = useCallback(
     async (reaction: CompletionLog["skinReaction"]) => {
-      if (!sanitizedLog) return;
-      const newLog: CompletionLog = {
-        ...sanitizedLog,
-        skinReaction: reaction,
-        lastUpdated: Date.now(),
-      };
-      setLog(newLog);
-      await saveCompletionLog(dateKey, newLog);
-      enqueueSyncForDate(dateKey);
+      if (!currentLog) return;
+      await persistLog({ ...currentLog, skinReaction: reaction, lastUpdated: Date.now() });
     },
-    [sanitizedLog, dateKey],
+    [currentLog, persistLog],
   );
 
   const toggleOutdoor = useCallback(async () => {
     if (!prefs) return;
     const newPrefs = { ...prefs, isOutdoor: !prefs.isOutdoor };
     setPrefs(newPrefs);
-    const { saveUserPreferences } = await import("@/lib/firebase");
     await saveUserPreferences({ isOutdoor: !prefs.isOutdoor });
   }, [prefs]);
 
@@ -173,7 +192,6 @@ export function useTracker() {
       if (!prefs) return;
       const newPrefs = { ...prefs, notificationsEnabled: enabled };
       setPrefs(newPrefs);
-      const { saveUserPreferences } = await import("@/lib/firebase");
       await saveUserPreferences({ notificationsEnabled: enabled });
     },
     [prefs],

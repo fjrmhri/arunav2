@@ -69,6 +69,7 @@ export default function TrackerPage() {
           <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
             <button
               onClick={() => setActiveCategory(null)}
+              aria-pressed={activeCategory === null}
               className={cn("tab-pill", activeCategory === null && "active")}
             >
               Semua
@@ -81,6 +82,7 @@ export default function TrackerPage() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat === activeCategory ? null : cat)}
+                  aria-pressed={activeCategory === cat}
                   className={cn("tab-pill", activeCategory === cat && "active")}
                 >
                   {meta.label} {done}/{grouped[cat].length}
@@ -218,12 +220,13 @@ export default function TrackerPage() {
             <span className="section-label">Catatan Harian</span>
           </div>
           <textarea
+            aria-label="Catatan harian"
             value={notesValue}
             onChange={(e) => setNotesValue(e.target.value)}
             onBlur={handleNotesSave}
             placeholder="Observasi, keluhan, atau catatan hari ini..."
             rows={4}
-            className="w-full rounded-xl p-3 text-sm resize-none focus:outline-none transition-colors"
+            className="w-full rounded-xl p-3 text-sm resize-none transition-colors"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--border)",

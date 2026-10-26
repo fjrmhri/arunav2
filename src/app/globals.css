@@ -10,13 +10,14 @@
   --bg-elevated:  #181818;
   --border:       #222222;
   --border-soft:  #1c1c1c;
+  /* Kontras teks minimal 4.5:1 terhadap --bg-elevated (WCAG AA) */
   --text-primary: #eeeeee;
-  --text-secondary:#888888;
-  --text-muted:   #444444;
+  --text-secondary:#a3a3a3;
+  --text-muted:   #858585;
   --accent-dim:   #282828;
   --success:      #4caf7d;
   --warning:      #d4854a;
-  --danger:       #c0392b;
+  --danger:       #e5534b;
 }
 
 @layer base {
@@ -28,6 +29,7 @@
     font-family: var(--font-dm-sans), sans-serif;
   }
   h1,h2,h3,h4,h5,h6 { font-family: var(--font-sora), sans-serif; }
+  :focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
   ::-webkit-scrollbar { width: 2px; height: 2px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 999px; }
