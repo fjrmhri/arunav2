@@ -68,25 +68,34 @@ npm run start
 - `npm run build` membuat build production
 - `npm run start` menjalankan hasil build
 - `npm run lint` menjalankan ESLint
+- `npm run typecheck` menjalankan pemeriksaan TypeScript
+- `npm test` menjalankan unit test (Vitest)
 
 ## Environment
 
-Variabel yang bisa diisi ada di `.env.example`.
+Semua variabel ada di `.env.example`:
 
-Contoh:
+- `NEXT_PUBLIC_FIREBASE_*` dan `NEXT_PUBLIC_FCM_VAPID_KEY` untuk push notification FCM.
+- `SYNC_SECRET`, `GITHUB_TOKEN`, `GITHUB_OBSIDIAN_REPO`, `GITHUB_OBSIDIAN_BRANCH` untuk sync ke Obsidian (server-side saja).
 
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-```
+## Pengaturan
+
+Halaman `/settings` (ikon roda gigi di dashboard) untuk:
+
+- Tanggal mulai program dan tanggal mulai puasa 36 jam terakhir (anchor siklus 14 hari).
+- Sync Secret untuk sync Obsidian.
+
+## Sync Obsidian
+
+Endpoint `POST /api/sync-obsidian` hanya menerima request dengan header `Authorization: Bearer <SYNC_SECRET>`. Tanpa `SYNC_SECRET` di server, endpoint menolak semua request.
+
+1. Buat secret: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+2. Isi `SYNC_SECRET`, `GITHUB_TOKEN` (fine-grained, akses Contents: Read and write hanya ke repo vault), dan `GITHUB_OBSIDIAN_REPO` di Vercel > Settings > Environment Variables, lalu redeploy.
+3. Isi secret yang sama di halaman Pengaturan aplikasi, lalu tekan `Sync sekarang`.
 
 ## Deploy
 
-Proyek bisa dideploy ke Vercel atau platform lain yang mendukung Next.js.
+Proyek dideploy ke Vercel. Push ke GitHub memicu deploy otomatis.
 
 ## Install di Mobile
 

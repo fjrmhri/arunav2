@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Bell, BellOff } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Settings } from "lucide-react";
 import BottomNav from "@/components/layout/BottomNav";
 import ExerciseCard from "@/components/dashboard/ExerciseCard";
 import SkincareCard from "@/components/dashboard/SkincareCard";
@@ -86,6 +87,14 @@ export default function DashboardPage() {
               <MapPin size={10} />
               {prefs?.isOutdoor ? "Outdoor" : "Indoor"}
             </button>
+            <Link
+              href="/settings"
+              aria-label="Pengaturan"
+              className="flex items-center justify-center w-7 h-7 rounded-full transition-all"
+              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+            >
+              <Settings size={13} />
+            </Link>
           </div>
         </div>
 

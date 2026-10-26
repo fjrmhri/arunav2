@@ -3,10 +3,10 @@
 // Server-side: GitHub token tidak expose ke client
 // ============================================================
 
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import type { CompletionLog, UserPreferences } from "@/types";
 import { generateDailyNote, generateProgressDashboard } from "@/lib/markdownFormatter";
-import type { ProgressData } from "@/lib/markdownFormatter";
+import { validateSyncPayload } from "@/lib/syncValidation";
 
 // ── GitHub API helpers ─────────────────────────────────────
 
@@ -14,6 +14,8 @@ const GH_TOKEN  = process.env.GITHUB_TOKEN        ?? "";
 const GH_REPO   = process.env.GITHUB_OBSIDIAN_REPO ?? ""; // "username/obsidian-vault"
 const GH_BRANCH = process.env.GITHUB_OBSIDIAN_BRANCH ?? "main";
 const GH_BASE   = `https://api.github.com/repos/${GH_REPO}/contents`;
+const SYNC_SECRET    = process.env.SYNC_SECRET ?? "";
+const MAX_BODY_BYTES = 256 * 1024;
 
 interface GithubFileResponse {
   sha:  string;
@@ -69,34 +71,57 @@ async function upsertFile(filePath: string, content: string): Promise<void> {
   await putFile(filePath, content, sha);
 }
 
-// ── Request body type ──────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────
 
-interface SyncPayload {
-  logs:         CompletionLog[];
-  progressData: ProgressData;
-  prefs:        UserPreferences;
+function isAuthorized(req: NextRequest): boolean {
+  const header = req.headers.get("authorization") ?? "";
+  const expected = `Bearer ${SYNC_SECRET}`;
+  const a = Buffer.from(header, "utf-8");
+  const b = Buffer.from(expected, "utf-8");
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 // ── Handler ────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Validasi config
-  if (!GH_TOKEN || !GH_REPO) {
+  // Fail closed: tanpa SYNC_SECRET, endpoint tidak bisa dipakai siapa pun
+  if (!SYNC_SECRET) {
     return NextResponse.json(
-      { error: "GITHUB_TOKEN atau GITHUB_OBSIDIAN_REPO belum dikonfigurasi." },
-      { status: 500 },
+      { error: "Sync dinonaktifkan: SYNC_SECRET belum diset di server." },
+      { status: 503 },
     );
   }
 
-  let payload: SyncPayload;
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!GH_TOKEN || !GH_REPO) {
+    return NextResponse.json(
+      { error: "GITHUB_TOKEN atau GITHUB_OBSIDIAN_REPO belum dikonfigurasi." },
+      { status: 503 },
+    );
+  }
+
+  const contentLength = Number(req.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Payload terlalu besar" }, { status: 413 });
+  }
+
+  let body: unknown;
   try {
-    payload = await req.json();
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { logs, progressData, prefs } = payload;
-  if (!logs?.length && !progressData) {
+  const result = validateSyncPayload(body);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
+
+  const { logs, progressData, prefs } = result.payload;
+  if (logs.length === 0 && !progressData) {
     return NextResponse.json({ synced: 0 });
   }
 
@@ -110,26 +135,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       await upsertFile(note.filePath, note.content);
       syncedCount++;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`daily/${log.dateKey}: ${msg}`);
+      // Detail error GitHub hanya di log server, tidak dikirim ke klien
+      console.error(`[sync-obsidian] daily/${log.dateKey}:`, err);
+      errors.push(`daily/${log.dateKey}`);
     }
   }
 
   // 2. Dashboard progress.md
-  if (progressData && progressData.last7 && progressData.last30) {
+  if (progressData) {
     try {
       const dashboard = generateProgressDashboard(progressData);
       await upsertFile(dashboard.filePath, dashboard.content);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`dashboard/progress.md: ${msg}`);
+      console.error("[sync-obsidian] dashboard/progress.md:", err);
+      errors.push("dashboard/progress.md");
     }
   }
 
   if (errors.length > 0) {
+    const totalTargets = logs.length + (progressData ? 1 : 0);
     return NextResponse.json(
-      { synced: syncedCount, errors },
-      { status: errors.length === logs.length ? 500 : 207 },
+      { synced: syncedCount, failed: errors },
+      { status: errors.length === totalTargets ? 502 : 207 },
     );
   }
 
