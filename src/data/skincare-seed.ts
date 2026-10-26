@@ -84,10 +84,6 @@ export function getSkincarePlanForDay(dayIndex: DayIndex): SkincareDay {
   };
 }
 
-export const SKINCARE_SCHEDULE: SkincareDay[] = ([1, 2, 3, 4, 5, 6, 7] as DayIndex[]).map(
-  getSkincarePlanForDay,
-);
-
 export const SKINCARE_RULES = {
   sunscreenReapply: {
     title: "Mandat Re-aplikasi Sunscreen",

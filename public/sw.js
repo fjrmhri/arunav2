@@ -4,13 +4,12 @@
 // ============================================================
 
 // ── Firebase Messaging (opsional, gagal gracefully jika tidak dikonfigurasi) ──
-let _fcmReady = false;
 try {
   importScripts(
-    "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js",
+    "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js",
   );
   importScripts(
-    "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js",
+    "https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-compat.js",
   );
   importScripts("/firebase-sw-config.js");
 
@@ -37,7 +36,6 @@ try {
       });
     });
 
-    _fcmReady = true;
     console.log("[SW] Firebase Messaging aktif (background push siap).");
   }
 } catch (err) {

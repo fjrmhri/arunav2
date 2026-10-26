@@ -305,11 +305,3 @@ export const SAFETY_NOTES: SafetyNote[] = [
     tag: "UNKNOWN",
   },
 ];
-
-export const getSafetyByCategory = (
-  category: SafetyNote["category"]
-): SafetyNote[] =>
-  SAFETY_NOTES.filter((note) => note.category === category);
-
-export const getSafetyByTag = (tag: SafetyNote["tag"]): SafetyNote[] =>
-  SAFETY_NOTES.filter((note) => note.tag === tag);

@@ -10,22 +10,10 @@ import type {
   FastingSchedule,
   NutritionTarget,
   DayIndex,
+  Supplement,
 } from "@/types";
 import { FINAL_SUPPLEMENT_SLOTS } from "@/data/final-schedule";
 import { slugify } from "@/lib/taskIds";
-
-export type Supplement = {
-  key: string;
-  name: string;
-  dose: string;
-  timing: string;
-  timingSlot: "pagi" | "siang" | "sore" | "malam";
-  timeRange: string;
-  withFood: boolean;
-  notes: string;
-  warningIfCombined?: string;
-  conflictNote?: string;
-};
 
 export const NUTRITION_TARGET: NutritionTarget = {
   bmr: 1556.25,
@@ -121,7 +109,7 @@ export const EXERCISE_SCHEDULE: ExerciseDay[] = [
   },
 ];
 
-export const MEAL_PLANS: MealPlan[] = ([1, 2, 3, 4, 5, 6] as DayIndex[]).map((day) => ({
+export const MEAL_PLANS: MealPlan[] = ([1, 2, 3, 4, 5, 6, 7] as DayIndex[]).map((day) => ({
   dayIndex: day,
   isFastingDay: false,
   meals: [

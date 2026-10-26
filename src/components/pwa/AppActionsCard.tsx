@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Bell, BellOff, ChevronDown, Clock } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {
   formatReminderDateTime,
   getSupplementReminderSlots,
@@ -11,11 +10,6 @@ import {
 } from "@/lib/supplementReminders";
 import type { Supplement } from "@/types";
 import type { FastingContext } from "@/lib/fasting";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-}
 
 interface AppActionsCardProps {
   dateKey: string;
@@ -90,11 +84,6 @@ export default function AppActionsCard({
   onNotificationSettingChange,
   digestInfo,
 }: AppActionsCardProps) {
-  const [, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [, setIsInstalled] = useState(false);
-  const [, setStandaloneMode] = useState(false);
-  const [, setServiceWorkerAktif] = useState(false);
-  const [, setPromptInstallTersedia] = useState(false);
   const [isReminderExpanded, setIsReminderExpanded] = useState(true);
   const [notificationState, setNotificationState] =
     useState<NotificationState>("unsupported");
@@ -113,67 +102,33 @@ export default function AppActionsCard({
     return [digestSlot, ...supplementSlots];
   }, [dateKey, supplements, fastingContext, digestInfo]);
 
+  // Pesan FCM saat app terbuka tidak tampil otomatis; tampilkan sebagai notifikasi lokal
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!notificationsEnabled || notificationState !== "granted") return;
+    let unsubscribe: (() => void) | null = null;
+    let cancelled = false;
 
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-        true;
-    setIsInstalled(standalone);
-    setStandaloneMode(standalone);
-
-    setPromptInstallTersedia(false);
-
-    if (navigator.serviceWorker) {
-      if (navigator.serviceWorker.controller) {
-        setServiceWorkerAktif(true);
-      }
-
-      navigator.serviceWorker.ready
-        .then(() => {
-          setServiceWorkerAktif(true);
-          console.log("[PWA] Service worker ready");
-        })
-        .catch((error) => {
-          console.error("[PWA] Service worker ready error:", error);
-          setServiceWorkerAktif(false);
-        });
-    } else {
-      setServiceWorkerAktif(false);
-      console.warn("[PWA] serviceWorker is not available in this browser");
-    }
-
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      const deferredEvent = event as BeforeInstallPromptEvent;
-      setDeferredPrompt(deferredEvent);
-      setPromptInstallTersedia(true);
-      console.log("[PWA] beforeinstallprompt available");
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setStandaloneMode(true);
-      setDeferredPrompt(null);
-      setPromptInstallTersedia(false);
-      console.log("[PWA] appinstalled event fired");
-    };
-
-    window.addEventListener(
-      "beforeinstallprompt",
-      handleBeforeInstallPrompt as EventListener,
-    );
-    window.addEventListener("appinstalled", handleAppInstalled);
+    void import("@/lib/fcm")
+      .then(({ setupForegroundMessageHandler }) =>
+        setupForegroundMessageHandler((payload) => {
+          const message = payload as { notification?: { title?: string; body?: string } };
+          void showReminderNotification(
+            message.notification?.title ?? "arunav2",
+            message.notification?.body ?? "",
+            "fcm-foreground",
+          );
+        }),
+      )
+      .then((stop) => {
+        if (cancelled) stop();
+        else unsubscribe = stop;
+      });
 
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt as EventListener,
-      );
-      window.removeEventListener("appinstalled", handleAppInstalled);
+      cancelled = true;
+      unsubscribe?.();
     };
-  }, []);
+  }, [notificationsEnabled, notificationState]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -3,9 +3,8 @@
 // Konversi data Firebase/localStorage ke format Markdown
 // ============================================================
 
-import type { CompletionLog } from "@/types";
-import { parseLocalDateKey } from "@/lib/date";
-import { getDayIndexFromDateKey, getDayTypeLabel } from "@/lib/utils";
+import type { CompletionLog, UserPreferences } from "@/types";
+import { formatDate, getDayIndexFromDateKey, getDayTypeLabel } from "@/lib/utils";
 import {
   getExercisePlanForDate,
   getMealPlanForDate,
@@ -20,7 +19,6 @@ import {
   skinPmTaskIds,
   supplementTaskIds,
 } from "@/lib/taskIds";
-import type { UserPreferences } from "@/types";
 
 export interface ObsidianDailyNote {
   filePath: string; // obsidian-vault/daily/2026-04-16 Pull Day.md
@@ -34,16 +32,6 @@ export interface ObsidianDashboard {
 }
 
 // ── Helpers ────────────────────────────────────────────────
-
-function formatDateId(dateKey: string): string {
-  const d = parseLocalDateKey(dateKey);
-  return d.toLocaleDateString("id-ID", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function parseCategoryFromId(taskId: string) {
   // Format ID: lihat src/lib/taskIds.ts
@@ -214,7 +202,7 @@ export function generateDailyNote(
     ``,
     `# ${dateKey} — ${dayLabel}`,
     ``,
-    `${formatDateId(dateKey)}`,
+    `${formatDate(dateKey)}`,
     exerciseSection,
     nutritionSection,
     suppSection,
@@ -260,7 +248,6 @@ export function generateProgressDashboard(
   const perfect = data.perfectDays;
 
   // Heatmap cells (last 30)
-  const heatmapRows: string[][] = [];
   const cells = data.last30.map((p) => {
     const pct = p.percent;
     let fill: string;

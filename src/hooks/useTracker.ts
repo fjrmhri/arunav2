@@ -7,7 +7,7 @@ import {
   getUserPreferences,
   saveUserPreferences,
   getStreak,
-} from "@/lib/firebase";
+} from "@/lib/storage";
 import { todayKey, generateTasks, getDayIndexFromDateKey } from "@/lib/utils";
 import { EXERCISE_SCHEDULE } from "@/data/fitness-seed";
 import { getSkincarePlanForDay } from "@/data/skincare-seed";
@@ -39,9 +39,12 @@ export function useTracker() {
 
   const baseExercise = EXERCISE_SCHEDULE.find((e) => e.dayIndex === dayIndex)!;
   const skincare = getSkincarePlanForDay(dayIndex);
-  const fastingContext = prefs
-    ? getFastingContext(dateKey, prefs, new Date())
-    : null;
+  // Dihitung ulang saat tanggal/prefs berubah (bukan tiap render) agar
+  // komponen turunan seperti reminder tidak re-subscribe terus-menerus.
+  const fastingContext = useMemo(
+    () => (prefs ? getFastingContext(dateKey, prefs, new Date()) : null),
+    [dateKey, prefs],
+  );
   const exercise = useMemo(
     () => getExercisePlanForDate(dayIndex, dateKey, prefs),
     [dayIndex, dateKey, prefs],

@@ -136,10 +136,6 @@ export async function getStreak(today: string): Promise<number> {
   return streak;
 }
 
-export function getStorageMode(): "local" {
-  return "local";
-}
-
 // ── Backup: ekspor / impor JSON ─────────────────────────────
 
 export const BACKUP_VERSION = 1;

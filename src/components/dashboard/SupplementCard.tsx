@@ -3,19 +3,12 @@
 import { Pill } from "lucide-react";
 import type { FastingContext } from "@/lib/fasting";
 import type { SupplementSchedule } from "@/types";
+import { SLOT_LABEL, SLOT_ORDER, SLOT_TIME } from "@/data/supplement-slots";
 
 interface SupplementCardProps {
   schedule: SupplementSchedule;
   fastingContext?: FastingContext | null;
 }
-
-const SLOT_ORDER = ["pagi", "siang", "sore", "malam"] as const;
-const SLOT_LABEL: Record<string, string> = {
-  pagi: "Pagi", siang: "Siang", sore: "Sore", malam: "Malam",
-};
-const SLOT_TIME: Record<string, string> = {
-  pagi: "07:00–08:30", siang: "12:00–13:00", sore: "16:00–17:00", malam: "21:00–21:30",
-};
 
 export default function SupplementCard({ schedule, fastingContext }: SupplementCardProps) {
   const grouped = schedule.supplements.reduce((acc, supp) => {

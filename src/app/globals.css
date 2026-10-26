@@ -3,8 +3,6 @@
 @tailwind utilities;
 
 :root {
-  --font-sora: "Sora", sans-serif;
-  --font-dm-sans: "DM Sans", sans-serif;
   --bg:           #0a0a0a;
   --bg-card:      #111111;
   --bg-elevated:  #181818;

@@ -14,8 +14,8 @@
 //   Firebase Console > Project Settings > Service Accounts > Generate new private key
 //
 // MENDAPATKAN FCM TOKEN USER:
-//   Token disimpan di localStorage key "arunav2_fcm_token"
-//   Bisa diambil dari browser DevTools > Application > Local Storage
+//   Buka halaman Pengaturan di app, tekan "Salin token FCM"
+//   (token disimpan di localStorage key "arunav2_fcm_token")
 // ============================================================
 
 const admin = require("firebase-admin");

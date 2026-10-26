@@ -1,6 +1,6 @@
 "use client";
 
-import { Utensils, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import type { MealPlan } from "@/types";
 import { NUTRITION_TARGET } from "@/data/fitness-seed";

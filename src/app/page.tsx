@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { MapPin, Settings } from "lucide-react";
 import BottomNav from "@/components/layout/BottomNav";
@@ -33,6 +33,20 @@ export default function DashboardPage() {
   } = useTracker();
 
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+
+  // Objek stabil agar jadwal reminder tidak dihitung ulang tiap render
+  const digestInfo = useMemo(
+    () => ({
+      dayLabel: getDayTypeLabel(exercise.type),
+      taskCount: allTaskIds.length,
+      fastingStatus: isFastingDay
+        ? "Puasa aktif"
+        : isFastingPrepDay
+        ? "Persiapan puasa"
+        : "Hari normal",
+    }),
+    [exercise.type, allTaskIds.length, isFastingDay, isFastingPrepDay],
+  );
 
   if (loading) {
     return (
@@ -129,7 +143,7 @@ export default function DashboardPage() {
       </header>
 
       {/* ── Fasting alert ── */}
-      {(isFastingDay || isFastingPrepDay) && (
+      {fastingContext && (
         <div className="px-5 mb-3">
           <FastingCard fastingContext={fastingContext} />
         </div>
@@ -143,15 +157,7 @@ export default function DashboardPage() {
           notificationsEnabled={!!prefs?.notificationsEnabled}
           supplements={supplementSchedule.supplements}
           onNotificationSettingChange={setNotificationsEnabled}
-          digestInfo={{
-            dayLabel: getDayTypeLabel(exercise?.type ?? "rest_fasting"),
-            taskCount: allTaskIds.length,
-            fastingStatus: isFastingDay
-              ? "Puasa aktif"
-              : isFastingPrepDay
-              ? "Persiapan puasa"
-              : "Hari normal",
-          }}
+          digestInfo={digestInfo}
         />
       </div>
 
