@@ -19,6 +19,8 @@ export default function MealCard({ mealPlan, fastingContext }: MealCardProps) {
       <div className="flex items-center justify-between mb-3">
         <p className="section-label">Nutrisi Hari Ini</p>
         <button
+          aria-label={expanded ? "Tutup daftar makan" : "Lihat daftar makan"}
+          aria-expanded={expanded}
           onClick={() => setExpanded(!expanded)}
           className="w-7 h-7 rounded-lg flex items-center justify-center"
           style={{ background: "var(--bg-elevated)" }}

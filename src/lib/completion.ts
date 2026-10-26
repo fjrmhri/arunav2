@@ -15,15 +15,3 @@ export function sanitizeCompletionLog(
     skippedTaskIds: filterValidTaskIds(log.skippedTaskIds, validTaskIds),
   };
 }
-
-export function hasCompletionLogTaskMismatch(
-  log: CompletionLog,
-  validTaskIds: string[],
-): boolean {
-  return (
-    log.completedTaskIds.length !==
-      filterValidTaskIds(log.completedTaskIds, validTaskIds).length ||
-    log.skippedTaskIds.length !==
-      filterValidTaskIds(log.skippedTaskIds, validTaskIds).length
-  );
-}

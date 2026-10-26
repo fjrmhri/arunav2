@@ -20,6 +20,8 @@ export default function ChecklistItem({
   return (
     <div className="group">
       <button
+        role="checkbox"
+        aria-checked={checked}
         onClick={() => !disabled && onToggle(id)}
         disabled={disabled}
         className={cn(
@@ -33,6 +35,7 @@ export default function ChecklistItem({
       >
         {/* Checkbox */}
         <div
+          aria-hidden="true"
           className="mt-0.5 w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200"
           style={{
             borderColor: checked ? "var(--text-primary)" : "var(--text-muted)",

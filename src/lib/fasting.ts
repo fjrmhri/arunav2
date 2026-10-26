@@ -238,7 +238,8 @@ export function getFastingContext(
   };
 }
 
-function isSupplementHeldForRefeed(supplement: Supplement) {
+/** Suplemen berkalori/makanan ditunda ke refeeding; Creatine & Magnesium tetap jalan. */
+export function isSupplementHeldForRefeed(supplement: Pick<Supplement, "name">) {
   return (
     !supplement.name.includes("Creatine") &&
     !supplement.name.includes("Magnesium")

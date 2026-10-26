@@ -88,6 +88,7 @@ export default function PlannerPage() {
             <button
               key={key}
               onClick={() => setActiveTab(key)}
+              aria-pressed={activeTab === key}
               className={cn("tab-pill", activeTab === key && "active")}
             >
               {label}

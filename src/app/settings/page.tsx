@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
-import { getUserPreferences, saveUserPreferences } from "@/lib/firebase";
+import {
+  exportBackup,
+  getUserPreferences,
+  importBackup,
+  saveUserPreferences,
+} from "@/lib/firebase";
 import { getFastingContext } from "@/lib/fasting";
 import { flushSyncQueue, getSyncSecret, setSyncSecret, type SyncResult } from "@/lib/githubSync";
 import { isValidDateKey } from "@/lib/syncValidation";
@@ -65,6 +70,39 @@ export default function SettingsPage() {
     });
     setSyncSecret(secret);
     setStatus("Pengaturan tersimpan.");
+  };
+
+  const handleExport = async () => {
+    const backup = await exportBackup();
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `arunav2-backup-${getLocalDateKey()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus(`Backup diekspor (${backup.logs.length} hari).`);
+  };
+
+  const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const confirmed = window.confirm(
+      "Impor akan mengganti pengaturan dan menimpa log pada tanggal yang ada di file. Lanjutkan?",
+    );
+    if (!confirmed) return;
+
+    try {
+      const count = await importBackup(JSON.parse(await file.text()));
+      const prefs = await getUserPreferences();
+      setStartDate(prefs.startDate);
+      setLastFastStartDate(prefs.lastFastStartDate ?? "");
+      setStatus(`Backup dipulihkan (${count} hari).`);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Impor gagal.");
+    }
   };
 
   const handleSyncNow = async () => {
@@ -168,6 +206,31 @@ export default function SettingsPage() {
           >
             {syncing ? "Menyinkronkan..." : "Sync sekarang"}
           </button>
+        </div>
+
+        {/* Backup */}
+        <div className="card p-4 space-y-3">
+          <p className="section-label">Backup Data</p>
+          <p className="text-[11px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            Semua data hanya tersimpan di browser HP ini. Ekspor berkala agar tidak hilang saat
+            data browser dihapus atau ganti HP.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExport}
+              className="flex-1 rounded-xl py-3 text-xs font-display font-semibold"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            >
+              Ekspor JSON
+            </button>
+            <label
+              className="flex-1 rounded-xl py-3 text-xs font-display font-semibold text-center cursor-pointer"
+              style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            >
+              Impor JSON
+              <input type="file" accept="application/json,.json" className="sr-only" onChange={handleImport} />
+            </label>
+          </div>
         </div>
 
         <button

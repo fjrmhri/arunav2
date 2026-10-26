@@ -48,4 +48,40 @@ describe("getUserPreferences", () => {
     await saveUserPreferences({ lastFastStartDate: undefined });
     expect((await getUserPreferences()).lastFastStartDate).toBeUndefined();
   });
+
+  it("entri rusak tidak membuat pembacaan crash", async () => {
+    const { getCompletionLog, getCompletionLogsInRange } = await import("@/lib/firebase");
+    localStorage.setItem("log_2026-10-26", "{bukan json");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(getCompletionLog("2026-10-26")).resolves.toBeNull();
+    await expect(getCompletionLogsInRange("2026-10-25", "2026-10-27")).resolves.toEqual([]);
+  });
+
+  it("ekspor lalu impor backup mengembalikan data yang sama", async () => {
+    const { exportBackup, importBackup, getCompletionLog, saveCompletionLog, saveUserPreferences } =
+      await import("@/lib/firebase");
+    const log = {
+      dateKey: "2026-10-27",
+      completedTaskIds: ["2026-10-27_hydration"],
+      skippedTaskIds: [],
+      notes: "uji",
+      lastUpdated: 1,
+    };
+    await saveUserPreferences({ startDate: "2026-10-20" });
+    await saveCompletionLog(log.dateKey, log);
+    const backup = await exportBackup();
+
+    localStorage.clear();
+    const count = await importBackup(JSON.parse(JSON.stringify(backup)));
+
+    expect(count).toBe(1);
+    expect(await getCompletionLog(log.dateKey)).toEqual(log);
+    expect(JSON.parse(localStorage.getItem("user_prefs") ?? "{}").startDate).toBe("2026-10-20");
+  });
+
+  it("impor menolak file yang bukan backup arunav2", async () => {
+    const { importBackup } = await import("@/lib/firebase");
+    await expect(importBackup({ foo: 1 })).rejects.toThrow();
+  });
 });

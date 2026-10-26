@@ -49,7 +49,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "Progress",
         short_name: "Progress",
         description: "Grafik completion dan streak",
-        url: "/safety",
+        url: "/progress",
         icons: [{ src: "/icon-192.png", sizes: "192x192" }],
       },
     ],

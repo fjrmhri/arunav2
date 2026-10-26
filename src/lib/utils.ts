@@ -12,7 +12,14 @@ import {
   getFastingContext,
   getMealPlanForDate,
   getSupplementScheduleForDate,
+  isSupplementHeldForRefeed,
 } from "@/lib/fasting";
+import {
+  exerciseTaskIds,
+  mealTaskIds,
+  skinPmTaskIds,
+  supplementTaskIds,
+} from "@/lib/taskIds";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -170,9 +177,10 @@ export function generateTasks(
       label: exercise.label,
       detail: `${exercise.exercises.length} gerakan · ${exercise.duration}`,
     });
+    const exerciseIds = exerciseTaskIds(dateKey, exercise.exercises);
     exercise.exercises.forEach((ex, i) => {
       tasks.push({
-        id: `${dateKey}_ex_${i}`,
+        id: exerciseIds[i],
         category: "exercise",
         label: ex.name,
         detail: ex.sets
@@ -182,27 +190,32 @@ export function generateTasks(
     });
   }
 
-  // Saat puasa ketat: meal plan berisi "Puasa Aktif" (bukan makan nyata)
-  // dan suplemen semua ditunda — keduanya tidak actionable, tidak tampil di tracker.
+  // Saat puasa ketat: meal plan berisi "Puasa Aktif" (bukan makan nyata) jadi
+  // tidak actionable. Suplemen yang tidak ditunda (Creatine, Magnesium) tetap tampil.
   if (!fastingContext.isStrictFastDay) {
+    const mealIds = mealTaskIds(dateKey, mealPlan.meals);
     mealPlan.meals.forEach((meal, index) => {
       tasks.push({
-        id: `${dateKey}_meal_${index}`,
+        id: mealIds[index],
         category: "nutrition",
         label: `${meal.label} (${meal.time})`,
         detail: meal.items.join(" + "),
       });
     });
-
-    supplementSchedule.supplements.forEach((supplement, index) => {
-      tasks.push({
-        id: `${dateKey}_supp_${index}`,
-        category: "supplement",
-        label: `${supplement.name} — ${supplement.dose}`,
-        detail: `${supplement.timing} · ${supplement.notes}`,
-      });
-    });
   }
+
+  const actionableSupplements = fastingContext.isStrictFastDay
+    ? supplementSchedule.supplements.filter((supp) => !isSupplementHeldForRefeed(supp))
+    : supplementSchedule.supplements;
+  const supplementIds = supplementTaskIds(dateKey, actionableSupplements);
+  actionableSupplements.forEach((supplement, index) => {
+    tasks.push({
+      id: supplementIds[index],
+      category: "supplement",
+      label: `${supplement.name} — ${supplement.dose}`,
+      detail: `${supplement.timing} · ${supplement.notes}`,
+    });
+  });
 
   const skincare = getSkincarePlanForDay(dayIndex);
   tasks.push({
@@ -212,9 +225,10 @@ export function generateTasks(
     detail: "Facial Wash → Serum → Pomegranate Brightening Moisturizer → Sunscreen",
   });
 
+  const skinPmIds = skinPmTaskIds(dateKey, skincare.pmRoutine);
   skincare.pmRoutine.forEach((step, index) => {
     tasks.push({
-      id: `${dateKey}_skin_pm_${index}`,
+      id: skinPmIds[index],
       category: "skincare_pm",
       label: `Skincare Malam — ${step.productShort}`,
       detail: step.notes,
@@ -240,6 +254,33 @@ export function generateTasks(
   }
 
   return tasks;
+}
+
+/**
+ * Peta ID lama berbasis indeks (`_ex_0`, `_meal_1`, `_supp_2`, `_skin_pm_0`)
+ * ke ID stabil berbasis nama, mengikuti urutan rencana pada tanggal tersebut.
+ */
+export function getLegacyTaskIdMap(
+  dayIndex: DayIndex,
+  dateKey: string,
+  prefs?: Pick<UserPreferences, "startDate" | "lastFastStartDate"> | null,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  const exercise = getExercisePlanForDate(dayIndex, dateKey, prefs);
+  const mealPlan = getMealPlanForDate(dayIndex, dateKey, prefs);
+  const supplements = getSupplementScheduleForDate(dayIndex, dateKey, prefs).supplements;
+  const skincare = getSkincarePlanForDay(dayIndex);
+
+  exerciseTaskIds(dateKey, exercise.exercises).forEach((id, i) =>
+    map.set(`${dateKey}_ex_${i}`, id),
+  );
+  mealTaskIds(dateKey, mealPlan.meals).forEach((id, i) => map.set(`${dateKey}_meal_${i}`, id));
+  supplementTaskIds(dateKey, supplements).forEach((id, i) => map.set(`${dateKey}_supp_${i}`, id));
+  skinPmTaskIds(dateKey, skincare.pmRoutine).forEach((id, i) =>
+    map.set(`${dateKey}_skin_pm_${i}`, id),
+  );
+
+  return map;
 }
 
 export function getSeverityColor(_severity: "info" | "warning" | "danger" | "unknown") {

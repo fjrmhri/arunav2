@@ -88,6 +88,7 @@ export interface SupplementSchedule {
 }
 
 export interface Supplement {
+  key: string; // stabil, dipakai untuk task ID
   name: string;
   dose: string;
   timing: string;

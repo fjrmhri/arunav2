@@ -8,17 +8,28 @@ Aplikasi tracker kesehatan berbasis Next.js untuk jadwal kebugaran, nutrisi, pua
 - React 18
 - TypeScript
 - Tailwind CSS
-- Firebase Firestore opsional
-- localStorage sebagai fallback
+- localStorage (data hanya di perangkat)
+- Firebase Cloud Messaging (`@firebase/app` + `@firebase/messaging`) untuk push
+- Vitest untuk unit test
 
 ## Fitur
 
-- Dashboard ringkasan harian
-- Planner mingguan untuk olahraga, nutrisi, puasa, suplemen, dan skincare
-- Daily tracker dengan progress checklist
-- Safety notes dan asumsi penting dari data program
-- Penyimpanan data via Firebase atau localStorage
+- Dashboard ringkasan harian (`/`)
+- Planner mingguan untuk olahraga, nutrisi, puasa, suplemen, dan skincare (`/planner`)
+- Daily tracker dengan progress checklist (`/tracker`)
+- Progress, streak, dan heatmap (`/progress`)
+- Safety notes, red flag puasa, dan asumsi program (`/safety`)
+- Pengaturan program, sync Obsidian, dan backup ekspor/impor JSON (`/settings`)
+- Sync catatan harian ke vault Obsidian via GitHub
 - Bisa di-install di mobile sebagai PWA
+
+## Penyimpanan Data
+
+Semua data (centang harian, catatan, pengaturan) disimpan di `localStorage` browser, tanpa server. Konsekuensinya:
+
+- Data hilang bila data situs/browser dihapus atau ganti HP. Ekspor backup JSON berkala dari halaman Pengaturan.
+- App meminta storage persisten (`navigator.storage.persist()`) agar tidak dihapus otomatis saat memori penuh.
+- Reminder suplemen lokal hanya berjalan saat app terbuka.
 
 ## Struktur Singkat
 

@@ -44,9 +44,9 @@ try {
   console.warn("[SW] Firebase Messaging tidak tersedia:", err);
 }
 
-// ── Cache config (bumped ke v2 untuk force-update) ──────────
-const STATIC_CACHE = "arunav2-static-v2";
-const PAGE_CACHE = "arunav2-pages-v2";
+// ── Cache config (v3: hapus cache v2 yang menyimpan payload RSC basi) ──
+const STATIC_CACHE = "arunav2-static-v3";
+const PAGE_CACHE = "arunav2-pages-v3";
 const PRECACHE_URLS = [
   "/",
   "/manifest.webmanifest",
@@ -108,18 +108,44 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // API dan payload React Server Components tidak pernah di-cache
+  if (
+    url.pathname.startsWith("/api/") ||
+    url.searchParams.has("_rsc") ||
+    request.headers.get("RSC") === "1"
+  ) {
+    return;
+  }
+
+  // Aset build ber-hash dan ikon: cache-first (isinya tidak pernah berubah)
+  if (url.pathname.startsWith("/_next/static/") || /\.(png|ico|svg|woff2?)$/.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+
+        return fetch(request).then((response) => {
+          if (!response.ok) return response;
+
+          const copy = response.clone();
+          caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+          return response;
+        });
+      }),
+    );
+    return;
+  }
+
+  // Sisanya (manifest, config, dll.): network-first, cache sebagai cadangan offline
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(request).then((response) => {
-        if (!response.ok) return response;
-
-        const copy = response.clone();
-        caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+        }
         return response;
-      });
-    }),
+      })
+      .catch(() => caches.match(request)),
   );
 });
 

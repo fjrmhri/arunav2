@@ -32,9 +32,20 @@ export default function SkincareCard({ skincare, isOutdoor }: SkincareCardProps)
         </div>
       )}
 
+      {skincare.warnings.length > 0 && (
+        <ul className="mb-3 rounded-lg p-2.5 space-y-1" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
+          {skincare.warnings.map((warning) => (
+            <li key={warning} className="text-xs" style={{ color: "var(--warning)" }}>
+              {warning}
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* AM */}
       <div className="mb-2">
         <button
+          aria-expanded={showAm}
           onClick={() => setShowAm(!showAm)}
           className="w-full flex items-center justify-between p-2.5 rounded-xl transition-all"
           style={{ background: "var(--bg-elevated)" }}
@@ -75,6 +86,7 @@ export default function SkincareCard({ skincare, isOutdoor }: SkincareCardProps)
       {/* PM */}
       <div>
         <button
+          aria-expanded={showPm}
           onClick={() => setShowPm(!showPm)}
           className="w-full flex items-center justify-between p-2.5 rounded-xl transition-all"
           style={{ background: "var(--bg-elevated)" }}

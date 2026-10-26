@@ -4,7 +4,7 @@
 // Semua fungsi aman dipanggil tanpa Firebase dikonfigurasi.
 // ============================================================
 
-import type { Messaging } from "firebase/messaging";
+import type { Messaging } from "@firebase/messaging";
 import { getFirebaseApp, isFcmConfigured } from "@/lib/firebase-app";
 
 const FCM_TOKEN_KEY   = "arunav2_fcm_token";
@@ -20,7 +20,7 @@ async function getMessagingInstance(): Promise<Messaging | null> {
   if (!app) return null;
 
   try {
-    const { getMessaging } = await import("firebase/messaging");
+    const { getMessaging } = await import("@firebase/messaging");
     _messagingInstance = getMessaging(app);
     return _messagingInstance;
   } catch (err) {
@@ -47,7 +47,7 @@ export async function requestFcmToken(): Promise<string | null> {
     const messaging = await getMessagingInstance();
     if (!messaging) return null;
 
-    const { getToken } = await import("firebase/messaging");
+    const { getToken } = await import("@firebase/messaging");
 
     // Gunakan sw.js yang sudah terdaftar — tidak buat SW baru
     const swReg = await navigator.serviceWorker.ready;
@@ -91,6 +91,6 @@ export async function setupForegroundMessageHandler(
   const messaging = await getMessagingInstance();
   if (!messaging) return;
 
-  const { onMessage } = await import("firebase/messaging");
+  const { onMessage } = await import("@firebase/messaging");
   onMessage(messaging, onMsg);
 }
