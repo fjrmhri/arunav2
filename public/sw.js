@@ -33,7 +33,6 @@ try {
         badge: "/icon-192.png",
         tag: payload.collapseKey ?? "fcm-push",
         data: { url: urlData, ...payload.data },
-        // @ts-ignore
         actions: [{ action: "open_tracker", title: "Buka Tracker" }],
       });
     });

@@ -22,19 +22,32 @@ export async function saveCompletionLog(dateKey: string, log: CompletionLog): Pr
   }
 }
 
-const DEFAULT_PREFS: UserPreferences = {
-  userId: "default",
-  name: "Aruna",
-  startDate: getLocalDateKey(),
-  cycleDay: 1,
-  isOutdoor: false,
-  notificationsEnabled: false,
-};
+const PREFS_KEY = "user_prefs";
+
+function createDefaultPrefs(): UserPreferences {
+  return {
+    userId: "default",
+    name: "Aruna",
+    startDate: getLocalDateKey(),
+    cycleDay: 1,
+    isOutdoor: false,
+    notificationsEnabled: false,
+  };
+}
 
 export async function getUserPreferences(): Promise<UserPreferences> {
-  if (typeof window === "undefined") return DEFAULT_PREFS;
-  const raw = localStorage.getItem("user_prefs");
-  return raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS;
+  if (typeof window === "undefined") return createDefaultPrefs();
+  const raw = localStorage.getItem(PREFS_KEY);
+
+  // Simpan prefs saat pertama kali dibuat agar startDate (anchor puasa) tidak
+  // bergeser ke "hari ini" setiap kali app dibuka.
+  if (!raw) {
+    const prefs = createDefaultPrefs();
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    return prefs;
+  }
+
+  return { ...createDefaultPrefs(), ...JSON.parse(raw) };
 }
 
 export async function saveUserPreferences(
@@ -44,7 +57,7 @@ export async function saveUserPreferences(
   const merged = { ...current, ...prefs };
 
   if (typeof window !== "undefined") {
-    localStorage.setItem("user_prefs", JSON.stringify(merged));
+    localStorage.setItem(PREFS_KEY, JSON.stringify(merged));
   }
 }
 

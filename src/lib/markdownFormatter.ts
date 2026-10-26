@@ -54,7 +54,7 @@ function parseCategoryFromId(taskId: string) {
 
 export function generateDailyNote(
   log: CompletionLog,
-  prefs: UserPreferences,
+  prefs: Pick<UserPreferences, "startDate" | "lastFastStartDate">,
 ): ObsidianDailyNote {
   const { dateKey } = log;
   const dayIndex = getDayIndexFromDateKey(dateKey);
